@@ -1,0 +1,9 @@
+numpy
+datetime
+matplotlib
+cartopy
+windspharm (for non-divergent step only)
+joblib (Runs CV code in parallel)
+imageio (for gifs)
+dill
+pickle (to save temporary files)
