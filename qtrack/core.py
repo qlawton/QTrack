@@ -89,6 +89,22 @@ class AEW_CCKW:
         self.sig_VP_valley = sig_VP_valley
         self.TB_lat_range = TB_lat_range
         self.VP_lat_range = VP_lat_range
+def download_examples(input_str, output_dir=""):
+    """
+    This script will download example files. Available files are:
+    - "era5_2010"
+
+    """
+    import gdown
+        
+    if input_str == "era5_2010":
+        out_str = "era5_700_wind_global_2010.nc"
+        print('Downloading ERA5 Test case to: '+output_dir+out_str)
+        g_id = "https://drive.google.com/uc?id=1aLJpb1UAFTdmZRX56bHVn25EzuTcL8d_" 
+        gdown.download(g_id, output_dir+out_str)  
+        print('Downloaded Successfully.')
+    else:
+        raise Exception("Invalid example data name provided. Please check that you are inputting a valid file name.")
         
 def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nondiv = True, SAVE_IMAGE = False, SAVE_OUTPUT = True):
             

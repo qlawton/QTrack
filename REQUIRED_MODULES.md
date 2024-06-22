@@ -1,5 +1,7 @@
 ## Here is a list of the python modules required to run this tracker
 numpy
+xarray
+netcdf4
 datetime
 matplotlib
 cartopy
