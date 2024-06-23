@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
-"""
-AEW Postprocessing Script: Takes the computed AEW tracks and cleans them up. This includes combining duplicate tracks, removing short tracks, and connecting broken tracks. 
-"""
+
 def run_postprocessing():
+    """
+    AEW Postprocessing Script: Takes the computed AEW tracks and cleans them up. This includes combining duplicate tracks, removing short tracks, and connecting 
+broken tracks. 
+    """
     import numpy as np
     import pandas as pd
     import datetime
