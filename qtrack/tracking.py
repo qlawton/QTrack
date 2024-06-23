@@ -1,8 +1,8 @@
 
 def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks_raw.nc', 
-                 initation_bounds = [-35, 40], radius_used = 600, threshold_inital = 2e-6, threshold_continue = 1e-7, 
+                 initiation_bounds = [-35, 40], radius_used = 600, threshold_initial = 2e-6, threshold_continue = 1e-7, 
                  threshold_continue_extrap = 1e-6, extrap_day_limit = 33, extrap_dist = 700, extrap_dist_carib = 500, 
-                 extrap_latitude_max = 50, extrap_latitude_min = 5, extrap_longitude_start = -20, extrap_latitude_start, carib_longitude_start = -60,
+                 extrap_latitude_max = 50, extrap_latitude_min = 5, extrap_longitude_start = -20, extrap_latitude_start = 20, carib_longitude_start = -60,
                  AEW_day_remove = 2, centroid_radius = 600, spatial_res = 1, temporal_res = 6, run_animation = True, speed_limit_in = True):
     """
     Main African Easterly wave Tracking script. Requires an input of radially averaged curvature vorticity at the 700 hPa level. A description of this methodology can be found in the associated Monthly Weather Review publication: https://doi.org/10.1175/MWR-D-21-0321.1
@@ -19,7 +19,8 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     #of curvature vorticity averaging we want to pull from.
     import numpy as np
     import sys
-    np.warnings.filterwarnings('ignore')
+    import warnings
+    warnings.filterwarnings('ignore')
 
     #### INFO OF DATA TO RUN ON #####
 
@@ -105,7 +106,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     extra_dist3_60 = extrap_dist #Same as before, but west of transition longitude (default: 1000km)
 
     lat_max = extrap_latitude_max #The maximum latitude tracker will run extrapolation to (default: 50)
-    extra_lat_bottom = extrap_latitude_bottom #The minimum latitude tracker will run extrapolation on, otherwise defaults to other method (default: 5)
+    extra_lat_bottom = extrap_latitude_min #The minimum latitude tracker will run extrapolation on, otherwise defaults to other method (default: 5)
     extra_lon = extrap_longitude_start #-20 #The longitude at and west of that extrapolation begin (default: -20)
     extra_lat_start = extrap_latitude_start #Was at 18, perhaps now do 20 to account for weird action just N of lesser antilles (default: 20)
     extra_transition = carib_longitude_start #-60 #Longitude at and west of that extrapolation settings become more restrictive at (default: -60)
@@ -157,10 +158,8 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
-    import metpy.calc as mpcalc
     import time as tm
     from scipy import signal
-    from geopy.distance import geodesic
     from sklearn.linear_model import LinearRegression
     from scipy.signal import savgol_filter
 
@@ -971,7 +970,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
                     AEW_lon[row, slc_num] = cent_lon[row]
                     AEW_lat[row, slc_num] = cent_lat[row]
                     AEW_time[row, slc_num] = time[slc_num]
-                    print(AEW_lon)
+                    #print(AEW_lon)
         else: 
             # IF WE ALREADY CREATED THE ARRAY... GOOD! But now we have to deal with a few other things
             #First, we need to get the new initation points. However, we only declare a new AEW if
@@ -1555,7 +1554,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
 # -*- coding: utf-8 -*-
 
 def run_postprocessing(input_file = 'AEW_tracks_raw.nc', curv_data_file = 'radial_avg_curv_vort.nc',radius_used = 600, AEW_day_remove = 2, 
-                      real_year_used = np.NaN, AEW_merge_dist = 500, AEW_forward_connect_dist = 700, AEW_backward_connect_dist = 200, TC_merge_dist = 500,
+                      real_year_used = 'None', AEW_merge_dist = 500, AEW_forward_connect_dist = 700, AEW_backward_connect_dist = 200, TC_merge_dist = 500,
                       remove_duplicates = True, hovmoller_save = True, object_data_save = True, netcdf_data_save = True,
                       save_obj_file = 'AEW_tracks_post_processed.pkl', save_nc_file = 'AEW_tracks_post_processed.nc', hov_save_file = 'final_hovmoller.png'):
     """
@@ -1575,6 +1574,7 @@ broken tracks.
     import cartopy.feature as cfeature
     from scipy.signal import savgol_filter
     import sys
+    import dill as pickle
 
     ##### HARD CODED SETTINGS. My recommendation is not to touch these unless you know what you're doing #####
     smooth_len = 7
@@ -1600,6 +1600,15 @@ broken tracks.
     save_hovmoller = hovmoller_save#True #Save basic hovmoller after running (Default: True)
     save_data = object_data_save #Save out the postprocessed AEW data (Default: True)
     save_data_nc = netcdf_data_save #Save out a NetCDF version of this data (Default: True)
+    
+    
+    ### Prevent year issues
+    if year_used == 'None' and pair_with_TC == True:
+        raise Exception("Year must be specified if TC pairing option is turned on.")
+    elif year_used == 'None':
+        year_used = 1000
+        import warnings
+        warnings.warn("WARNING: No year specified, so the dummy year of 1000 will be used. This may be fine for general model output, but could result in errors for reanalysis data or realistic simulations. ")
 
     def find_nearest(array, value):
         array = np.asarray(array)
@@ -2093,7 +2102,6 @@ broken tracks.
 
 
     if save_data == True:
-        import pickle
         data_save_out = save_obj_file#'TRACKING/AEW_tracks_post_processed.pkl'
         pickle.dump(season_object, open(data_save_out, 'wb'))
         print('Saved')
@@ -2214,4 +2222,5 @@ broken tracks.
         cbar = plt.colorbar(bg)
         cbar.set_label('Curv. Vort. (Avg. 5-20N, 1e-6)', fontsize = 12)
         plt.savefig(save_hov)
+        plt.close()
 

@@ -21,6 +21,7 @@ from numpy import dtype
 import os
 import dill as pickle
 import xarray as xr
+import scipy
 from joblib.externals.loky import set_loky_pickler
 from joblib import parallel_config
 from joblib import Parallel, delayed
@@ -106,21 +107,22 @@ def download_examples(input_str, output_dir=""):
     else:
         raise Exception("Invalid example data name provided. Please check that you are inputting a valid file name.")
         
-def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nondiv = True, SAVE_IMAGE = False, SAVE_OUTPUT = True):
+def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nondiv = True, SAVE_IMAGE = False, SAVE_OUTPUT = True, gif_dir_in = ''):
             
     dir_ani_frame = 'frames_R'+str(radius)
     
     # ### IMPORTANT DIRECTORIES AND CUSTOMIZATIONS 
-    gif_dir = 'CURV_VORT/GIF/'
-    data_dir = 'CURV_VORT/TEMP_DATA/'
+    gif_dir = gif_dir_in
+    data_dir = ''
     data_in = data_in
     data_out = data_out
-
-    print('Setting Up | Output to:'+data_out)
-    try:
-        os.mkdir(gif_dir+dir_ani_frame)
-    except:
-        print('Directory could not be created -- may already exist')
+    
+    if SAVE_IMAGE == True:
+        print('Setting Up | Output to: '+data_out)
+        try:
+            os.mkdir(gif_dir+dir_ani_frame)
+        except:
+            print('Directory could not be created -- may already exist')
         
     save_dir = gif_dir+dir_ani_frame+'/'
     

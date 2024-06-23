@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-def compute_curvvort(data_in, data_out, radius_of_avg, data_resolution = 1, njobs_in = 1, nondiv_wind = False, run_animation = False):
+def compute_curvvort(data_in, data_out = 'radial_avg_curv_vort.nc', radius_of_avg = 600, data_resolution = 1, njobs_in = 1, nondiv_wind = False, run_animation = False, gif_dir_in = ''):
     """
     Compute the Curvature Vorticity averaged within a radius of each gridpoint. This is computationally expensive, and can be run in parallel. 
     
@@ -9,6 +9,8 @@ def compute_curvvort(data_in, data_out, radius_of_avg, data_resolution = 1, njob
     import numpy as np
     #from COMPUTE_SAVE_CURV_VORT_NON_DIV_UPDATE_FIX_PARALLEL import COMPUTE_CURV_VORT_NON_DIV_UPDATE
     import sys
+    
+    from qtrack.core import COMPUTE_CURV_VORT_NON_DIV_UPDATE
 
 #     if len(sys.argv) == 1: #Basically, no inputs
 #         data_in = 'CURV_VORT/HELMHOLTZ/wind_700_helmholtz.nc'
