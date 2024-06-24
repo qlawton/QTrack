@@ -90,7 +90,8 @@ class AEW_CCKW:
 def download_examples(input_str, output_dir=""):
     """
     This script will download example files. Available files are:
-    - "era5_2010"
+    - "era5_2010" | July - September of 2010
+    - "era5_2010_10day" | 10 Day Period in September
 
     """
     import gdown
@@ -99,6 +100,12 @@ def download_examples(input_str, output_dir=""):
         out_str = "era5_700_wind_global_2010.nc"
         print('Downloading ERA5 Test case to: '+output_dir+out_str)
         g_id = "https://drive.google.com/uc?id=1aLJpb1UAFTdmZRX56bHVn25EzuTcL8d_" 
+        gdown.download(g_id, output_dir+out_str)  
+        print('Downloaded Successfully.')
+    if input_str == 'era5_2010_10day':
+        out_str = "era5_700_wind_global_2010_10day.nc"
+        print('Downloading ERA5 Test case to: '+output_dir+out_str)
+        g_id = "https://drive.google.com/uc?id=1apXQ-Uut9A5-GuM-py-unWpuXoRvlvYk" 
         gdown.download(g_id, output_dir+out_str)  
         print('Downloaded Successfully.')
     else:
