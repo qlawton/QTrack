@@ -21,11 +21,8 @@ from numpy import dtype
 import os
 import dill as pickle
 import xarray as xr
-import scipy
 from joblib.externals.loky import set_loky_pickler
-from joblib import parallel_config
 from joblib import Parallel, delayed
-from joblib import wrap_non_picklable_objects
 set_loky_pickler("dill")
 
 class season:
@@ -108,7 +105,8 @@ def download_examples(input_str, output_dir=""):
         raise Exception("Invalid example data name provided. Please check that you are inputting a valid file name.")
         
 def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nondiv = True, SAVE_IMAGE = False, SAVE_OUTPUT = True, gif_dir_in = ''):
-            
+    import numpy as np
+    import time
     dir_ani_frame = 'frames_R'+str(radius)
     
     # ### IMPORTANT DIRECTORIES AND CUSTOMIZATIONS 
@@ -187,9 +185,8 @@ def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nond
         
     def GetBG(lon, lat, data_file, res, radius):
         #from joblib import Parallel, delayed
-        import numpy as np
-        import time
-        start= time.time()
+
+        start= tm.time()
     
         def get_dist_meters(lon, lat):
             earth_circ = 6371*2*np.pi*1000 #earth's circumference in meters
@@ -282,7 +279,7 @@ def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nond
                 avg_grid[y,x]= np.mean(data_file[outMask == True])
             #Parallel(n_jobs=-1)(delayed(run_code)(y, x) for x in j_bounds)
                     
-        end =time.time()
+        end =tm.time()
         #print('Time elapsed:'+str(end-start)+' s')
         
         return avg_grid

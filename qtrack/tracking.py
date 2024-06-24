@@ -18,7 +18,6 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     #(and corresponding datafiles) being focused on, and information on the radius
     #of curvature vorticity averaging we want to pull from.
     import numpy as np
-    import sys
     import warnings
     warnings.filterwarnings('ignore')
 
@@ -154,7 +153,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     from netCDF4 import Dataset, num2date
     import matplotlib.pyplot as plt
     import matplotlib.ticker as mticker
-    import matplotlib
+    #import matplotlib
     from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
@@ -376,8 +375,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     def find_maxima(data_in, lon, lat, lon_west, lon_east, thres_init, thres_cont, separate_bands = banding_t, exclude = True, smooth = True):
         '''This finds local maxima for a 5-20N AVERAGE VALUE AT EACH LONGITUDE POINT. Two thresholds are considered:
         -- "Init" is the threshold for initially defining a AEW, and here is ONLY defined if east of the "lon_land" value
-        -- "Cont" is the threshold for continuing the tracking/propagation of an existing AEW, and is defined everywhere.'''
-        avg_list = []    
+        -- "Cont" is the threshold for continuing the tracking/propagation of an existing AEW, and is defined everywhere.''' 
 
         def find_nearest(array, value): #This way, we can set the lat range from 5 to 20N
             array = np.asarray(array)
@@ -586,40 +584,6 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     #     final_max_cont = new_cont
         final_max_init = new_init
         return False, final_max_init
-
-    def execute_cleanup2(final_max_cont, final_max_init, data_mean, wide_thresh, data_res):
-        '''This just executes the wide_wave script and cleans up output to generate the final list of lon points.'''
-        wide_array, rm_wide, adj_wide = wide_wave_tester(final_max_cont, data_mean, wide_thresh, data_res)
-        wide_array_init, rm_wide_init, adj_wide_init = wide_wave_tester(final_max_init, data_mean, wide_thresh, data_res)
-        #print(adj_wide)
-        new_final_cont = []
-        new_final_init = []
-        # ---------- DO IT FOR CONT --------------
-        for i in range(len(final_max_cont)):
-            if final_max_cont[i] not in rm_wide:
-                new_final_cont.append(final_max_cont[i])
-
-        for i in range(len(adj_wide)):
-            new_final_cont.append(adj_wide[i])
-        new_final_cont.sort()
-
-        # ---------- DO IT FOR INIT ---------------
-        for i in range(len(final_max_init)):
-            if final_max_init[i] not in rm_wide_init:
-                new_final_init.append(final_max_init[i])
-
-        for i in range(len(adj_wide_init)):
-            new_final_init.append(adj_wide_init[i])
-        new_final_init.sort()
-
-
-        #print(lon_cont)
-        #print(lon_init)
-
-        #print(wide_array, rm_wide, adj_wide)
-        lon_init = lon[new_final_init]
-        lon_cont = lon[new_final_cont]
-        return lon_init, lon_cont, new_final_cont, new_final_init
 
     def within_distance_direct(lon, lat, lon_in,lat_in, lon_old, lat_old, step, forward_weight = True, forward_scale = 1/5):
         '''Right now, we want centers to be within a distance of the time step. 

@@ -6,9 +6,7 @@ def compute_curvvort(data_in, data_out = 'radial_avg_curv_vort.nc', radius_of_av
     
 
     """
-    import numpy as np
     #from COMPUTE_SAVE_CURV_VORT_NON_DIV_UPDATE_FIX_PARALLEL import COMPUTE_CURV_VORT_NON_DIV_UPDATE
-    import sys
     
     from qtrack.core import COMPUTE_CURV_VORT_NON_DIV_UPDATE
 
