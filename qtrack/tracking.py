@@ -1,7 +1,7 @@
 
 def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks_raw.nc', 
                  initiation_bounds = [-35, 40], radius_used = 600, threshold_initial = 2e-6, threshold_continue = 1e-7, 
-                 threshold_continue_extrap = 1e-6, extrap_day_limit = 33, extrap_dist = 700, extrap_dist_carib = 500, 
+                 threshold_continue_extrap = 1e-6, extrap_day_limit = 3, extrap_dist = 700, extrap_dist_carib = 500, 
                  extrap_latitude_max = 50, extrap_latitude_min = 5, extrap_longitude_start = -20, extrap_latitude_start = 20, carib_longitude_start = -60,
                  AEW_day_remove = 2, centroid_radius = 600, spatial_res = 1, temporal_res = 6, run_animation = True, speed_limit_in = True):
     """

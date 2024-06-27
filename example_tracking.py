@@ -25,7 +25,7 @@ tstart = time.time()
 # The following helper script will obtain example data to test the tracker on. Available datasets include:
 # - "era5_2010" ERA5 wind data from the 2010 AEW season. 
 
-qtrack.download_examples("era5_2010_10day", "")
+qtrack.download_examples("gfs_2024062612", "")
 
 # ### Prep data (not completed yet)
 
@@ -38,7 +38,7 @@ qtrack.download_examples("era5_2010_10day", "")
 
 
 # ### Curvature vorticity calculation
-data_file_in = "era5_700_wind_global_2010_10day.nc"
+data_file_in = "analysis_and_forecast_GFS_2024062612.nc"
 curv_file_out = "curv_vort_era5_test.nc"
 compute_curvvort(data_file_in, curv_file_out, njobs_in = -1)
 

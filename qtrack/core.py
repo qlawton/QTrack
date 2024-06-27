@@ -92,7 +92,7 @@ def download_examples(input_str, output_dir=""):
     This script will download example files. Available files are:
     - "era5_2010" | July - September of 2010
     - "era5_2010_10day" | 10 Day Period in September
-
+    - "gfs_2024062612" | GFS run from June 26th, 2024 at 12Z. GFS analysis data was appended before model start for 'spin up'.
     """
     import gdown
         
@@ -106,6 +106,12 @@ def download_examples(input_str, output_dir=""):
         out_str = "era5_700_wind_global_2010_10day.nc"
         print('Downloading ERA5 Test case to: '+output_dir+out_str)
         g_id = "https://drive.google.com/uc?id=1apXQ-Uut9A5-GuM-py-unWpuXoRvlvYk" 
+        gdown.download(g_id, output_dir+out_str)  
+        print('Downloaded Successfully.')
+    if input_str == "gfs_2024062612":
+        out_str = "analysis_and_forecast_GFS_2024062612.nc"
+        print('Downloading ERA5 Test case to: '+output_dir+out_str)
+        g_id = "https://drive.google.com/uc?id=1n1D4ICbTU3iVFls01ARwJNbWRKvR3ksr" 
         gdown.download(g_id, output_dir+out_str)  
         print('Downloaded Successfully.')
     else:
