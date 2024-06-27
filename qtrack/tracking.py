@@ -284,9 +284,9 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
         PV_mask = PV_slice.copy()
         lon_mask = LON_X.copy()
         lat_mask = LAT_Y.copy()
-        PV_mask[pv_filt == 0] = np.NaN
-        lon_mask[pv_filt == 0] = np.NaN
-        PV_mask[pv_filt== 0] = np.NaN
+        PV_mask[pv_filt == 0] = np.nan
+        lon_mask[pv_filt == 0] = np.nan
+        PV_mask[pv_filt== 0] = np.nan
 
             #Mask out (for all three fields) the filtered PV locations
         #PV_mask = np.ma.masked_where(pv_filt==0, PV_slice).copy()
@@ -294,9 +294,9 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
         #lat_mask = np.ma.masked_where(pv_filt==0, LAT_Y).copy()
 
         if exclude == True:
-            PV_mask[PV_mask<0] = np.NaN
-            lon_mask[PV_mask<0] = np.NaN
-            lat_mask[PV_mask<0] = np.NaN
+            PV_mask[PV_mask<0] = np.nan
+            lon_mask[PV_mask<0] = np.nan
+            lat_mask[PV_mask<0] = np.nan
 
 
         #Calculate the center of mass, finally
@@ -327,14 +327,14 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
                 PV_mask = PV_slice.copy()
                 lon_mask = LON_X.copy()
                 lat_mask = LAT_Y.copy()
-                PV_mask[pv_filt == 0] = np.NaN
-                lon_mask[pv_filt == 0] = np.NaN
-                PV_mask[pv_filt== 0] = np.NaN
+                PV_mask[pv_filt == 0] = np.nan
+                lon_mask[pv_filt == 0] = np.nan
+                PV_mask[pv_filt== 0] = np.nan
 
                 if exclude == True:
-                    PV_mask[PV_mask<0] = np.NaN
-                    lon_mask[PV_mask<0] = np.NaN
-                    lat_mask[PV_mask<0] = np.NaN
+                    PV_mask[PV_mask<0] = np.nan
+                    lon_mask[PV_mask<0] = np.nan
+                    lat_mask[PV_mask<0] = np.nan
 
                 x_cent = np.nansum(lon_mask*PV_mask)/np.nansum(PV_mask)
                 y_cent = np.nansum(lat_mask*PV_mask)/np.nansum(PV_mask)
@@ -355,14 +355,14 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
                 PV_mask = PV_slice.copy()
                 lon_mask = LON_X.copy()
                 lat_mask = LAT_Y.copy()
-                PV_mask[pv_filt == 0] = np.NaN
-                lon_mask[pv_filt == 0] = np.NaN
-                PV_mask[pv_filt== 0] = np.NaN
+                PV_mask[pv_filt == 0] = np.nan
+                lon_mask[pv_filt == 0] = np.nan
+                PV_mask[pv_filt== 0] = np.nan
 
                 if exclude == True:
-                    PV_mask[PV_mask<0] = np.NaN
-                    lon_mask[PV_mask<0] = np.NaN
-                    lat_mask[PV_mask<0] = np.NaN
+                    PV_mask[PV_mask<0] = np.nan
+                    lon_mask[PV_mask<0] = np.nan
+                    lat_mask[PV_mask<0] = np.nan
 
                 x_cent = np.nansum(lon_mask*PV_mask)/np.nansum(PV_mask)
                 y_cent = np.nansum(lat_mask*PV_mask)/np.nansum(PV_mask)
@@ -410,7 +410,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
                 #print(lat_avg_st, la)
                 if exclude == True: #Are we excluding negative values or not?
                     banded_noneg = data_slice.copy()
-                    banded_noneg[banded_noneg<0] = np.NaN
+                    banded_noneg[banded_noneg<0] = np.nan
                 else:
                     banded_noneg = data_slice.copy()
 
@@ -436,7 +436,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
             data_mean = np.nanmean(data_slice, axis = 0)
             if exclude == True:
                 data_slice_noneg = data_slice.copy()
-                data_slice_noneg[data_slice_noneg<0] = np.NaN
+                data_slice_noneg[data_slice_noneg<0] = np.nan
                 data_mean_noneg = np.nanmean(data_slice_noneg, axis = 0)
             else:
                 data_mean_noneg = data_mean
@@ -654,10 +654,10 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
             AEW_lat_in[row,:] = AEW_lat_slc
 
             #But this resulted in interpolations before and after the data -- thus, need to use "first, last" to restore to Nans
-            AEW_lon_in[row, 0:first] = np.NaN
-            AEW_lon_in[row, (last+1):] = np.NaN
-            AEW_lat_in[row, 0:first] = np.NaN
-            AEW_lat_in[row, (last+1):] = np.NaN
+            AEW_lon_in[row, 0:first] = np.nan
+            AEW_lon_in[row, (last+1):] = np.nan
+            AEW_lat_in[row, 0:first] = np.nan
+            AEW_lat_in[row, (last+1):] = np.nan
 
             #Remove any track that has less than 48 hours worth of data
             data_len = len(AEW_lon_slc[~np.isnan(AEW_lon_slc)])
@@ -876,7 +876,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
         print('Exception: Nothing to Delete')
     # ----------------- INITIALIZE IMPORTANT VARIABLES ------------------------
     mean_array = np.zeros((np.shape(time)[0],np.shape(lon)[0]))
-    empty_stack = np.ones((1, np.shape(time)[0]))*np.NaN
+    empty_stack = np.ones((1, np.shape(time)[0]))*np.nan
     ##### MAIN ITERATION LOOP #####
     # -------------------------------------------------------------------------
     # ITERATE OVER EACH TIMESTEP IN THE GIVEN DATASET WE ARE TRACKING AEWS IN
@@ -926,9 +926,9 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
 
             # ------ Now -- do we have any initated AEWs? If so, let's build the main array ----------
             if cent_lon: #Will only run if something is in cent_lon... otherwise, move to next loop
-                AEW_lon = np.ones((len(new_init_out), np.size(time)))*np.NaN
-                AEW_lat = np.ones((len(new_init_out), np.size(time)))*np.NaN
-                AEW_time = np.ones((len(new_init_out), np.size(time)))*np.NaN
+                AEW_lon = np.ones((len(new_init_out), np.size(time)))*np.nan
+                AEW_lat = np.ones((len(new_init_out), np.size(time)))*np.nan
+                AEW_time = np.ones((len(new_init_out), np.size(time)))*np.nan
 
                 for row in range(len(cent_lon)): #Now, iterate each new AEW wave to put them in their own row
                     AEW_lon[row, slc_num] = cent_lon[row]
@@ -1373,10 +1373,10 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
                         curv_val = curv_vort_data[curv_lat, curv_lon]
 
                         if (np.abs(AEW_lon_slc[slc_num]-AEW_lon_slc[slc_num-stuck_thresh])<= stuck_lon or (AEW_lon_slc[slc_num] - AEW_lon_slc[slc_num-stuck_thresh])> stuck_lon) and AEW_lon_slc[slc_num]<= extra_lon and AEW_lat_slc[slc_num]<extra_lat_start and curv_val <= speed_curv_thresh:
-                            AEW_lon[existing, slc_num] = np.NaN
-                            AEW_lat[existing, slc_num] = np.NaN
-                            AEW_lon[existing, (slc_num-1)] = np.NaN
-                            AEW_lat[existing, (slc_num-1)] = np.NaN                                
+                            AEW_lon[existing, slc_num] = np.nan
+                            AEW_lat[existing, slc_num] = np.nan
+                            AEW_lon[existing, (slc_num-1)] = np.nan
+                            AEW_lat[existing, (slc_num-1)] = np.nan                                
 
     # --------------------------------------------------------------------------
     #END OF MAIN ITREATION LOOP
@@ -1888,10 +1888,10 @@ broken tracks.
             AEW_lat_in[row,:] = AEW_lat_slc
 
             #But this resulted in interpolations before and after the data -- thus, need to use "first, last" to restore to Nans
-            AEW_lon_in[row, 0:first] = np.NaN
-            AEW_lon_in[row, (last+1):] = np.NaN
-            AEW_lat_in[row, 0:first] = np.NaN
-            AEW_lat_in[row, (last+1):] = np.NaN
+            AEW_lon_in[row, 0:first] = np.nan
+            AEW_lon_in[row, (last+1):] = np.nan
+            AEW_lat_in[row, 0:first] = np.nan
+            AEW_lat_in[row, (last+1):] = np.nan
         return AEW_lon_in, AEW_lat_in
     new_AEW_lon, new_AEW_lat = cleanup_AEW(AEW_lon, AEW_lat, 6, days_remove)
     new_AEW_lon = np.delete(new_AEW_lon, connect_del_list, axis = 0)
@@ -1969,7 +1969,7 @@ broken tracks.
 
     curv_vort = curv_file.variables['curv_vort']#[:,lat_st:lat_end,lon_st:lon_end]
 
-    AEW_strength = np.ones(np.shape(AEW_lon))*np.NaN
+    AEW_strength = np.ones(np.shape(AEW_lon))*np.nan
     for tm_i in range(np.shape(AEW_lon)[1]):
         curv_vort_slice = curv_vort[tm_i,:,:]
         for storm in range(np.shape(AEW_lon)[0]):
@@ -2023,8 +2023,8 @@ broken tracks.
     season_object = season(int(year_used), AEW_final_list)
     #season_object.waves_with_TC()
 
-    AEW_lon_filter = np.ones(np.shape(AEW_lon))*np.NaN
-    AEW_lat_filter = np.ones(np.shape(AEW_lat))*np.NaN
+    AEW_lon_filter = np.ones(np.shape(AEW_lon))*np.nan
+    AEW_lat_filter = np.ones(np.shape(AEW_lat))*np.nan
     AEW_gen_time_list = np.tile('NaT',(np.shape(AEW_lon)[0],)).astype('datetime64[ns]')
     AEW_name_list = np.tile('N/A',(np.shape(AEW_lon)[0],)).astype('U64')
     for row in range(np.shape(AEW_lon)[0]):
@@ -2167,7 +2167,7 @@ broken tracks.
 
         fig = plt.figure(figsize = (10,8))
         ax = fig.add_subplot(111)
-        bg = ax.contourf(lon, reg_list, curv_array*10**6, curv_cont_hov, cmap = matplotlib.cm.get_cmap('RdGy_r'),
+        bg = ax.contourf(lon, reg_list, curv_array*10**6, curv_cont_hov, cmap = 'RdGy_r',
                         extend = 'both')
 
         for wave_num in range(np.shape(AEW_lon)[0]):
