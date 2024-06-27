@@ -40,7 +40,7 @@ qtrack.download_examples("era5_2010_10day", "")
 # ### Curvature vorticity calculation
 data_file_in = "era5_700_wind_global_2010_10day.nc"
 curv_file_out = "curv_vort_era5_test.nc"
-compute_curvvort(data_file_in, curv_file_out, njobs_in = 6)
+compute_curvvort(data_file_in, curv_file_out, njobs_in = -1)
 
 
 # ### AEW Tracking step
