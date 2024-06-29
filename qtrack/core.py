@@ -24,6 +24,8 @@ import xarray as xr
 from joblib.externals.loky import set_loky_pickler
 from joblib import Parallel, delayed
 set_loky_pickler("dill")
+import pandas as pd
+import warnings
 
 class season:
     def __init__(self, year, AEW_group):
@@ -93,6 +95,7 @@ def download_examples(input_str, output_dir=""):
     - "era5_2010" | July - September of 2010
     - "era5_2010_10day" | 10 Day Period in September
     - "gfs_2024062612" | GFS run from June 26th, 2024 at 12Z. GFS analysis data was appended before model start for 'spin up'.
+    - "mpas_2021092400" | 30KM MPAS-A simulation (from Lawton et al. 2024; https://doi.org/10.1029/2023MS004187)
     """
     import gdown
         
@@ -110,12 +113,133 @@ def download_examples(input_str, output_dir=""):
         print('Downloaded Successfully.')
     if input_str == "gfs_2024062612":
         out_str = "analysis_and_forecast_GFS_2024062612.nc"
-        print('Downloading ERA5 Test case to: '+output_dir+out_str)
+        print('Downloading GFS Test case to: '+output_dir+out_str)
         g_id = "https://drive.google.com/uc?id=1n1D4ICbTU3iVFls01ARwJNbWRKvR3ksr" 
         gdown.download(g_id, output_dir+out_str)  
         print('Downloaded Successfully.')
+    if input_str == "mpas_2021092400":
+        out_str = "mpas_30km_run_2021092400.nc"
+        print('Downloading MPAS-A Test case to: '+output_dir+out_str)
+        g_id = "https://drive.google.com/uc?id=1QxugrKwyP0o5UW1qbAaRC0NVnack_sML" 
+        gdown.download(g_id, output_dir+out_str)  
+        print('Downloaded Successfully.')
+        
     else:
         raise Exception("Invalid example data name provided. Please check that you are inputting a valid file name.")
+
+def prep_data(data_in, cut_lev_val = 700, data_out = 'prepped_data_for_tracking.nc'):
+    """Make imporatnt adjustments to data to ensure AEW tracker can run. Includes 
+    flipping the lon/lat coordinates to proper direction, checking that all necessary components
+    are included and renaming if necessary, cutting data to 6-hourly data, and slicing out the desired height level (default at 700hPa, which is recommended for tracking)."""
+    input_data = data_in
+    output_data = data_out
+    level_to_cut = cut_lev_val    
+    
+    #### SET NAMES TO USE
+    lon_names = ['longitude', 'lon', 'lons']
+    lat_names = ['latitude', 'lat', 'lats']
+    lev_names = ['lev', 'level', 'levels']
+    wind_names = ['u', 'v']
+
+    correct_n_dims = 3
+    
+    def check_and_resample(input_data, time_var='time', interval='6h'):
+        if time_var not in input_data:
+            raise ValueError(f"{time_var} not found in dataset variables")
+
+        time_values = input_data[time_var].values
+
+        time_index = pd.to_datetime(time_values)
+        time_diffs = time_index[1:] - time_index[:-1]
+
+        expected_diff = pd.Timedelta(interval)
+
+        if not all(diff <= expected_diff for diff in time_diffs):
+            raise ValueError("Time steps must be at least in 6 hour intervals.")
+        elif all(diff == expected_diff for diff in time_diffs):
+            resampled_dataset = data_xr
+        else:
+            warnings.warn("Warning: sub-6hrly data identified. Trimming to 6-hourly data for best use in tracker.")
+            resampled_dataset = input_data.resample({time_var: interval}).nearest()
+        return resampled_dataset
+    
+    ##### ACTUAL RUNNING CODE HERE
+    ### Load in the dataset
+    data_xr = xr.open_dataset(input_data)
+    #### FIRST CHECK THE VARIABLES
+    ### Get a list of the included keys
+    var_list = list(data_xr.keys())
+    if (wind_names[0] not in var_list):
+        raise Exception("Missing variable "+str(wind_names[0])+" in provided file.")
+    if (wind_names[1] not in var_list):
+        raise Exception("Missing variable "+str(wind_names[1])+" in provided file.")
+
+    ### CUT DOWN TO JUST THE VARIABLES NEEDED
+    data_xr = data_xr[wind_names]
+
+    ### Now, check the dimensions, and adjust if necessary
+    for var in wind_names:
+        n_dims = len(data_xr[var].dims)
+        if n_dims < 3:
+            raise Exception("Not enough dimensions in dataset. Check that you have at least time, longitude, and latitude included.")
+        elif n_dims == 4:
+            print('Possibility of uncut level. Check names of dimensions.')
+
+            lev_key = [i for i in lev_names if i in list(data_xr.dims)]
+
+            if len(lev_key) == 1:
+                print('We have a level file, slice!')
+                data_xr[var].rename({lev_key[0]:'level'})
+                data_xr[var] = data_xr[var].sel(level = level_to_cut)
+            else: 
+                raise Exception("More than three dimensions specified, but 'level/lev/levs' not found. Please cut your input data down to just time, latitude, longitude, and level coordinates.")
+        elif n_dims > 4:
+            raise Exception("Too many coordinates. Please cut your input data down to just time, latitude, longitude, and level (unless already cut to specified level")
+
+
+    ### Next, check that we have at least a longitude/lon, latitude/lat, and time included. Can do this simultaneously 
+    lon_key = [i for i in lon_names if i in list(data_xr.dims)]
+    lat_key = [i for i in lat_names if i in list(data_xr.dims)]
+
+    if len(lon_key) == 0:
+        raise Exception("No valid longitude coordinates found in data.")
+    if len(lat_key) == 0:
+        raise Exception("No valid latitude coordinates found in data.")
+    if len(lat_key) >1 :
+        raise Exception("Multiple named latitude coordinates.")
+    if len(lon_key) >1 :
+        raise Exception("Multiple named longitude coordinates.")
+
+    ### Finally, we want to rename our longitude and latitude files
+    if lon_key[0] != 'longitude':
+        data_xr = data_xr.rename({lon_key[0]:'longitude'})
+
+    if lat_key[0] != 'latitude':
+        data_xr = data_xr.rename({lat_key[0]:'latitude'})
+        ## REQUIREMENTS: Latitude goes from positive to negative. Longitude is in -180 to +180 (and not 0 to 360)
+        
+    ### Renaming and level slicing has been done. Now we need to make sure that we have latitudes and longitudes increasing. If not, need to reorder. 
+    #### Check the ordering of the latitudes
+    if data_xr['latitude'].diff(dim='latitude').values[0] >= 0: ## If positive difference for latitude... we need to switch
+        data_xr = data_xr.reindex(latitude=list(reversed(data_xr.latitude)))
+    if data_xr['longitude'].diff(dim='longitude').values[0] <= 0: ## If negative difference for longitude... we need to switch
+        data_xr = data_xr.reindex(longitude=list(reversed(data_xr.longitude)))
+
+    ### Finally, check if the longitude is 0 to 360
+    min_lon = data_xr['longitude'].min().values
+    max_lon = data_xr['longitude'].max().values
+
+    if max_lon > 180:
+        warnings.warn("WARNING: LONGITUDE VALUE EXCEEDS 180. Assuming longitude data is formatted in absolute (0 to 360) and adjusting to W/E degrees.")
+        warnings.warn("Please double check your data to ensure you have the correct coordinate system.")
+        data_xr.coords['longitude'] = (data_xr.coordds['longitude'] + 180) % 360 - 180
+        data_xr = data_xr.sortby(data_xr.longitude)
+    ### FINALLY, NEED TO CUT TIME TO EVERY 6 HOURS
+    data_xr = check_and_resample(data_xr)    
+    
+    ### SAVE OUT THE DATA!
+    data_xr.to_netcdf(output_data)
+    print('Prepped data saved to: '+output_data)
         
 def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nondiv = True, SAVE_IMAGE = False, SAVE_OUTPUT = True, gif_dir_in = ''):
     import numpy as np

@@ -21,37 +21,34 @@ import time
 tstart = time.time()
 
 
-# ### Download Example ERA5 data from 2010
-# The following helper script will obtain example data to test the tracker on. Available datasets include:
-# - "era5_2010" ERA5 wind data from the 2010 AEW season. 
+# ### NAME FILES
+prepped_data_save = 'adjusted_data.nc'
+curv_file_out = "curv_vort_era5_test.nc"
+AEW_raw_save_file = 'AEW_tracks_raw.nc'
+AEW_final_nc_file = 'AEW_tracks_post_processed.nc'
+AEW_final_obj_file = 'AEW_tracks_post_processed.pkl'
+year_in = 2021
 
-qtrack.download_examples("gfs_2024062612", "")
+# ### DOWNLOAD EXAMPLE DATA (OPTIONAL)
+qtrack.download_examples("mpas_2021092400", "")
 
-# ### Prep data (not completed yet)
+# ### Prep data 
 
+qtrack.prep_data(data_in = "mpas_30km_run_2021092400.nc", 
+                data_out = prepped_data_save, cut_lev_val = 70000)
 
-# ### Non-divergent wind calculation (not working)
-# #### **WARNING: ONLY RUN THIS STEP ON FULLY GLOBAL DATA**
-# nondiv_data_file_in = "era5_700_wind_global_2010.nc"
-# nondiv_data_file_out = "era5_nondiv_700_global_2010.nc"
-# compute_nondiv_wind(nondiv_data_file_in, nondiv_data_file_out)
+# ### Non-divergent wind calculation (TO BE IMPLEMENTED LATER)
 
 
 # ### Curvature vorticity calculation
-data_file_in = "analysis_and_forecast_GFS_2024062612.nc"
-curv_file_out = "curv_vort_era5_test.nc"
+data_file_in = prepped_data_save #"prepped_data_for_tracking.nc"#"analysis_and_forecast_GFS_2024062612.nc"
 compute_curvvort(data_file_in, curv_file_out, njobs_in = -1)
 
-
 # ### AEW Tracking step
-AEW_raw_save_file = 'AEW_tracks_raw.nc'
 run_tracking(input_file = curv_file_out, save_file = AEW_raw_save_file)
 
 
 # ### AEW Postprocessing step
-AEW_final_nc_file = 'AEW_tracks_post_processed.nc'
-AEW_final_obj_file = 'AEW_tracks_post_processed.pkl'
-year_in = 2010
 run_postprocessing(input_file = AEW_raw_save_file, real_year_used = year_in, curv_data_file = curv_file_out, save_obj_file = AEW_final_obj_file, save_nc_file = AEW_final_nc_file)
 
 # ### OUTPUT TIME

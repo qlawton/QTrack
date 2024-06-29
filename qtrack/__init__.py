@@ -4,7 +4,8 @@ QTrack - African Easterly Wave Tracking in Model and Reanalysis Data
 
 __version__ = "0.0.1"
 
-from .core import (COMPUTE_CURV_VORT_NON_DIV_UPDATE, download_examples)
+from .core import (COMPUTE_CURV_VORT_NON_DIV_UPDATE, download_examples,
+                  prep_data)
 
 class season:
     def __init__(self, year, AEW_group):
