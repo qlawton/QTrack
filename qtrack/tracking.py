@@ -1518,9 +1518,9 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
 # -*- coding: utf-8 -*-
 
 def run_postprocessing(input_file = 'AEW_tracks_raw.nc', curv_data_file = 'radial_avg_curv_vort.nc',radius_used = 600, AEW_day_remove = 2, 
-                      real_year_used = 'None', AEW_merge_dist = 500, AEW_forward_connect_dist = 700, AEW_backward_connect_dist = 200, TC_merge_dist = 500,
+                      real_year_used = 'None', AEW_merge_dist = 500, AEW_forward_connect_dist = 700, AEW_backward_connect_dist = 200, TC_merge_dist = 500, TC_pairing = False, TC_pair_lat_max = 25, 
                       remove_duplicates = True, hovmoller_save = True, object_data_save = True, netcdf_data_save = True,
-                      save_obj_file = 'AEW_tracks_post_processed.pkl', save_nc_file = 'AEW_tracks_post_processed.nc', hov_save_file = 'final_hovmoller.png'):
+                      save_obj_file = 'AEW_tracks_post_processed.pkl', save_nc_file = 'AEW_tracks_post_processed.nc', hov_save_file = 'final_hovmoller.png', hov_name_prefix = '', hov_AEW_lat_lim = 25, hov_over_africa_color = True):
     """
     AEW Postprocessing Script: Takes the computed AEW tracks and cleans them up. This includes combining duplicate tracks, removing short tracks, and connecting 
 broken tracks. 
@@ -1539,19 +1539,20 @@ broken tracks.
     from scipy.signal import savgol_filter
     import sys
     import dill as pickle
+    from tropycal import tracks
 
     ##### HARD CODED SETTINGS. My recommendation is not to touch these unless you know what you're doing #####
     smooth_len = 7
     #year_used = 2006
     year_used = real_year_used
     TC_distance = TC_merge_dist#500 #km
-    lat_cut = 25
+    lat_cut = TC_pair_lat_max
     rad_used = radius_used
     merge_distance = AEW_merge_dist #Km
     connect_distance = AEW_forward_connect_dist#700 #km #Distance potentially "broken" waves can be connected if their end points imply westward propagation
     connect_distance_back = AEW_backward_connect_dist #km #Same, but for waves that are near stationary or move in the wrong direction
     connect_step = 2 
-    TC_min_month = 7 #earliest month for TC merging (FLAGGED: hard coding needs to be fixed)
+    TC_min_month = 1 #earliest month for TC merging (FLAGGED: hard coding needs to be fixed)
 
     ##### -- POSTPROCESSING SETTINGS -- ##### 
     #### IMPORTANT: MINIMUM LENGTH OF TRACK! ####
@@ -1559,7 +1560,7 @@ broken tracks.
     days_remove = AEW_day_remove #Default: 2 (days)
 
     #### OTHER SETTINGS #####
-    pair_with_TC = False #Pair with TC data (Default: False)
+    pair_with_TC = TC_pairing #Pair with TC data (Default: False)
     duplicate_removal = remove_duplicates #Remove duplicates (Default: True)
     save_hovmoller = hovmoller_save#True #Save basic hovmoller after running (Default: True)
     save_data = object_data_save #Save out the postprocessed AEW data (Default: True)
@@ -1917,6 +1918,7 @@ broken tracks.
     linked_TC_wave_time = []
 
     if pair_with_TC == True:
+        hurdat_atl = tracks.TrackDataset(basin='north_atlantic',source='hurdat',include_btk=True)
         season_pull = hurdat_atl.get_season(int(year_used))
         TC_id_list = season_pull.summary()['id']
         #print(TC_id_list)
@@ -1927,7 +1929,7 @@ broken tracks.
             current_storm = season_pull.get_storm(TC_id_list[TC_num])
             stm_type = current_storm.type
             current_name = current_storm.name
-            current_date = current_storm.date[(stm_type!='DB') & (stm_type!='LO') & (stm_type!='WV')]
+            current_date = current_storm.time[(stm_type!='DB') & (stm_type!='LO') & (stm_type!='WV')]
             current_lat = current_storm.lat[(stm_type!='DB') & (stm_type!='LO') & (stm_type!='WV')]
             current_lon = current_storm.lon[(stm_type!='DB') & (stm_type!='LO') & (stm_type!='WV')]
             
@@ -1946,6 +1948,12 @@ broken tracks.
                 wave_gen_lat = AEW_lat[wave_num, genesis_i]
                 if ~np.isnan(wave_gen_lon):
                     gen_wave_distance = haversine(TC_gen_lon, TC_gen_lat, wave_gen_lon, wave_gen_lat)
+                    #print(current_name)
+                    #print(gen_wave_distance)
+                    #print('Wave')
+                    #print(wave_gen_lon, wave_gen_lat)
+                    #print('TC')
+                    #print(TC_gen_lon, TC_gen_lat)
                     if gen_wave_distance <= TC_distance:
                         linked_TC_wave_time.append(TC_gen_time)
                         linked_TC_name.append(current_name)
@@ -2171,16 +2179,44 @@ broken tracks.
                         extend = 'both')
 
         for wave_num in range(np.shape(AEW_lon)[0]):
-            AEW_lon_plot = np.ma.masked_array(AEW_lon[wave_num,:], AEW_lat[wave_num,:]>25)
-            if np.nanmax(AEW_lon[wave_num,:])<-17:
+            AEW_lon_plot = np.ma.masked_array(AEW_lon[wave_num,:], AEW_lat[wave_num,:]>hov_AEW_lat_lim)
+            if np.nanmax(AEW_lon[wave_num,:])<-17 and hov_over_africa_color==True:
                 ind_col = 'dimgrey'
                 z_d = 4
             else:
                 ind_col = 'k'
                 z_d = 5
             plt.plot(AEW_lon_plot, reg_list, color = ind_col, linewidth = 3, zorder = z_d)
+        if pair_with_TC == True: 
+            for TC_num in range(len(TC_id_list)):
+            #Storm type array
+
+            #current_lat = current_storm.lat
+            #current_lon = current_storm.lon
+            #current_name = current_storm.name
+
+                current_storm = season_pull.get_storm(TC_id_list[TC_num])
+                stm_type = current_storm.type
+                current_name = current_storm.name
+                current_date = current_storm.time[(stm_type!='DB') & (stm_type!='LO') & (stm_type!='WV')]
+                current_lat = current_storm.lat[(stm_type!='DB') & (stm_type!='LO') & (stm_type!='WV')]
+                current_lon = current_storm.lon[(stm_type!='DB') & (stm_type!='LO') & (stm_type!='WV')]
+
+                invest_date = current_storm.time[(stm_type=='DB') | (stm_type=='LO') | (stm_type=='WV')]
+                invest_lat = current_storm.lat[(stm_type=='DB') | (stm_type=='LO') | (stm_type=='WV')]
+                invest_lon = current_storm.lon[(stm_type=='DB') | (stm_type=='LO') | (stm_type=='WV')]
+
+                if (current_date[0] > reg_list[0]) and current_date[0] < reg_list[-1] and np.min(current_lat)<=lat_cut:
+                    plt.text(current_lon[0]-15, current_date[0], current_name, color = 'b', fontsize = 10, weight = 'bold', zorder = 30)
+                    try:
+                        ax.scatter(current_lon[current_lat<=lat_cut], current_date[current_lat<=lat_cut], s=30, marker = '+', color='b', zorder = 7)
+                        ax.scatter(invest_lon[invest_lat<=lat_cut], invest_date[invest_lat<=lat_cut], s=30, marker = '+', color='g', zorder = 7)
+                    except:
+                        print('Failed plotting TCs')
+                        pass
+        ax.set_ylim([reg_list[0], reg_list[-1]])
         plt.gca().invert_yaxis()
-        ax.set_title("AEW Tracks with Curvature Vorticity", fontsize = 20)
+        ax.set_title(hov_name_prefix+" AEW Tracks with Curvature Vorticity", fontsize = 20)
         ax.set_xlabel('Longitude', fontsize = 20)
         ax.set_xlim(-100, 40)
         cbar = plt.colorbar(bg)
