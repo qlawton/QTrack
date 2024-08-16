@@ -22,3 +22,6 @@ dependencies:
   # Extras
   - gdown
   # - windspharm
+  #
+  # Testing
+  - pytest
