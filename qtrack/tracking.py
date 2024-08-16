@@ -1,7 +1,7 @@
 def run_tracking(
     input_file="radial_avg_curv_vort.nc",
     save_file="AEW_tracks_raw.nc",
-    initiation_bounds=[-35, 40],
+    initiation_bounds=(-35, 40),
     radius_used=600,
     threshold_initial=2e-6,
     threshold_continue=1e-7,
@@ -175,7 +175,7 @@ def run_tracking(
 
     # import matplotlib
     from cartopy.mpl.ticker import LatitudeFormatter, LongitudeFormatter
-    from netCDF4 import Dataset, num2date
+    from netCDF4 import Dataset
     from scipy import signal
     from scipy.signal import savgol_filter
     from sklearn.linear_model import LinearRegression
@@ -211,7 +211,7 @@ def run_tracking(
         Then the code masks out any values above a certain radius.
 
         This uses the assumption of a spherical Earth, not accounting for the equatorial "bulge" in real life."""
-        start = tm.time()
+        start = tm.time()  # noqa: F841
 
         earth_circ = 6371 * 2 * np.pi * 1000  # earth's circumference in meters
         lat_met = earth_circ / 360  # get the number of meters in a degree latitude (ignoring "bulge")
@@ -252,7 +252,7 @@ def run_tracking(
 
         radial_array = (np.sqrt(np.square(i_array_sub) + np.square(j_array_sub)) / 1000) < radius  # in km
         boolean_array[i_st:i_end, j_st:j_end] = radial_array
-        end = tm.time()
+        end = tm.time()  # noqa: F841
         # print(end - start)
         return boolean_array
 
@@ -267,7 +267,7 @@ def run_tracking(
         guess_lat = y_in[lati]
         guess_lon = x_in[loni]
         # Other important stuff
-        res = 1
+        # res = 1
         # box_num = 6/res; #First number is the degrees you want to cut out from the dataset for analysis
 
         def get_dist_meters(lon, lat):
@@ -310,7 +310,7 @@ def run_tracking(
         # lon_mask = np.ma.masked_where(pv_filt==0, LON_X).copy()
         # lat_mask = np.ma.masked_where(pv_filt==0, LAT_Y).copy()
 
-        if exclude == True:
+        if exclude:
             PV_mask[PV_mask < 0] = np.nan
             lon_mask[PV_mask < 0] = np.nan
             lat_mask[PV_mask < 0] = np.nan
@@ -331,12 +331,12 @@ def run_tracking(
                     break
                 old_x = x_cent
                 old_y = y_cent
-                x_centi, n = find_nearest(lon_new, x_cent)
-                y_centi, n = find_nearest(lat_new, y_cent)
+                x_centi, _ = find_nearest(lon_new, x_cent)
+                y_centi, _ = find_nearest(lat_new, y_cent)
 
                 try:
                     pv_filt = rad_mask(y_centi, x_centi, dx, dy, radius)
-                except:
+                except Exception:
                     # print('Exception: Edge of boundary. Skipping to next iteration.')
                     break
                 # Mask out (for all three fields) the filtered PV locations
@@ -347,7 +347,7 @@ def run_tracking(
                 lon_mask[pv_filt == 0] = np.nan
                 PV_mask[pv_filt == 0] = np.nan
 
-                if exclude == True:
+                if exclude:
                     PV_mask[PV_mask < 0] = np.nan
                     lon_mask[PV_mask < 0] = np.nan
                     lat_mask[PV_mask < 0] = np.nan
@@ -358,13 +358,13 @@ def run_tracking(
                 dist_check = haversine(x_cent, y_cent, old_x, old_y)
                 loop_it = loop_it + 1
         else:
-            for step in np.arange(it - 1):
+            for _ in np.arange(it - 1):
                 # print(x_cent, y_cent)
-                x_centi, n = find_nearest(lon_new, x_cent)
-                y_centi, n = find_nearest(lat_new, y_cent)
+                x_centi, _ = find_nearest(lon_new, x_cent)
+                y_centi, _ = find_nearest(lat_new, y_cent)
                 try:
                     pv_filt = rad_mask(y_centi, x_centi, dx, dy, radius)
-                except:
+                except Exception:
                     # print('Exception: Edge of boundary. Skipping to next iteration.')
                     continue
                 # Mask out (for all three fields) the filtered PV locations
@@ -375,7 +375,7 @@ def run_tracking(
                 lon_mask[pv_filt == 0] = np.nan
                 PV_mask[pv_filt == 0] = np.nan
 
-                if exclude == True:
+                if exclude:
                     PV_mask[PV_mask < 0] = np.nan
                     lon_mask[PV_mask < 0] = np.nan
                     lat_mask[PV_mask < 0] = np.nan
@@ -399,15 +399,15 @@ def run_tracking(
             return idx, array[idx]
 
         band_len = 6
-        #     if extra_bands == True:
+        #     if extra_bands:
         #         band_len = 8
         #     else:
         #         band_len = 6
 
         ## ----- TAKE ELLESS'S FEEDBACK INTO CONSIDERATION, CONSIDER 5 SEPARATE "BANDS" -----
-        if separate_bands == True:
-            lat_extra_end, n = find_nearest(lat, 15)
-            lat_extra_st, n = find_nearest(lat, 5)
+        if separate_bands:
+            lat_extra_end, _ = find_nearest(lat, 15)
+            lat_extra_st, _ = find_nearest(lat, 5)
             # print(lat_extra_st, lat_extra_end)
             if lat_extra_end > lat_extra_st:
                 band_vals = np.zeros((band_len, np.shape(data_in[lat_extra_st:lat_extra_end, :])[1]))
@@ -416,15 +416,15 @@ def run_tracking(
                 band_vals = np.zeros((band_len, np.shape(data_in[lat_extra_end:lat_extra_st, :])[1]))
                 test_vals = np.zeros((band_len, np.shape(data_in[lat_extra_end:lat_extra_st, :])[1]))
             for i in range(band_len):  # We will have six bands
-                lat_avg_end, n = find_nearest(lat, 15 + i)  # We only want to average the cells in a 5-20N range
-                lat_avg_st, n = find_nearest(lat, 5 + i)
+                lat_avg_end, _ = find_nearest(lat, 15 + i)  # We only want to average the cells in a 5-20N range
+                lat_avg_st, _ = find_nearest(lat, 5 + i)
 
                 if lat_avg_end > lat_avg_st:
                     data_slice = data_in[lat_avg_st:lat_avg_end, :]
                 else:
                     data_slice = data_in[lat_avg_end:lat_avg_st, :]
                 # print(lat_avg_st, la)
-                if exclude == True:  # Are we excluding negative values or not?
+                if exclude:  # Are we excluding negative values or not?
                     banded_noneg = data_slice.copy()
                     banded_noneg[banded_noneg < 0] = np.nan
                 else:
@@ -444,19 +444,19 @@ def run_tracking(
             # print(lat_center)
 
         else:
-            lat_avg_st, n = find_nearest(lat, 15)  # We only want to average the cells in a 5-20N range
-            lat_avg_end, n = find_nearest(lat, 5)
+            lat_avg_st, _ = find_nearest(lat, 15)  # We only want to average the cells in a 5-20N range
+            lat_avg_end, _ = find_nearest(lat, 5)
 
             data_slice = data_in[lat_avg_st:lat_avg_end, :]
             data_mean = np.nanmean(data_slice, axis=0)
-            if exclude == True:
+            if exclude:
                 data_slice_noneg = data_slice.copy()
                 data_slice_noneg[data_slice_noneg < 0] = np.nan
                 data_mean_noneg = np.nanmean(data_slice_noneg, axis=0)
             else:
                 data_mean_noneg = data_mean
 
-        if smooth == True:
+        if smooth:
             data_mean_noneg = savgol_filter(data_mean_noneg, 3, 2)
             data_mean = savgol_filter(data_mean, 3, 2)
 
@@ -736,12 +736,12 @@ def run_tracking(
         dataproj = ccrs.PlateCarree()
 
         # Define the extent of our static atlantic plot
-        if zoom == True:
+        if zoom:
             lon1 = -70
             lon2 = 30
             lat1 = 5
             lat2 = 30
-        if wider == True:
+        if wider:
             lon1 = -110
             lon2 = 40
             lat1 = 0
@@ -788,7 +788,7 @@ def run_tracking(
                 for new_row in range(row + 1, np.shape(lon_in)[0]):  # Look at the data for upcoming rows
                     new_data = lon_in[new_row, :]
                     equal_num = np.abs(new_data - sample_data) <= close_cutoff
-                    equal_num = len(equal_num[equal_num == True])
+                    equal_num = len(equal_num[equal_num == True])  # noqa: E712
                     # print(old_equal_num, equal_num)
                     if equal_num != 0:
                         first_i = np.where(np.abs(new_data - sample_data) <= close_cutoff)[0][0]
@@ -885,7 +885,7 @@ def run_tracking(
     # To make sure this works properly, need to delete the variables ----------
     try:
         pass  # del AEW_time, AEW_lon, AEW_lat
-    except:
+    except Exception:
         print("Exception: Nothing to Delete")
     # ----------------- INITIALIZE IMPORTANT VARIABLES ------------------------
     mean_array = np.zeros((np.shape(time)[0], np.shape(lon)[0]))
@@ -907,7 +907,7 @@ def run_tracking(
             mean_array[slc_num, :] = data_mean[:]
             # print(data_mean)
             # print(data_mean)
-            if cleanup == True:  # Cleanup is optional, relict of early tests. This only runs for initiation points
+            if cleanup:  # Cleanup is optional, relict of early tests. This only runs for initiation points
                 new_cont_out = cont_max
                 cont_out, init_out = execute_cleanup1(cont_max, init_max, data_mean, arb_thresh, deg_sep, res)
                 new_init_out = init_out
@@ -958,7 +958,7 @@ def run_tracking(
             data_mean, init_max, cont_max, lat_center = find_maxima(curv_vort_data, lon, lat, lon_west, lon_east, thres_init, thres_cont, separate_bands=banding_t)
             mean_array[slc_num, :] = data_mean[:]
 
-            if EXTRAPOLATE == True:
+            if EXTRAPOLATE:
                 for existing in range(np.shape(AEW_lon)[0]):  # First iterate over all the waves
                     AEW_lon_slc = AEW_lon[existing, :]
                     AEW_lat_slc = AEW_lat[existing, :]
@@ -1009,7 +1009,7 @@ def run_tracking(
 
                         try:
                             lont_off, latt_off, pvout_off, pvmask_off, lon_extra_out, lat_extra_out = general_centroid(lon, lat, curv_vort_data, centroid_weight, lat_guess_i, lon_guess_i, centroid_it_extra)
-                        except:
+                        except Exception:
                             print("Something went wrong with centroid, possibly out of bounds")
                             continue
                         # FIND THE CURVATURE VORTICITY VALUE AT THIS NEXT CENTER
@@ -1022,8 +1022,8 @@ def run_tracking(
                         win3_extra, distance3_extra, fwd_extra = within_distance_direct(lon, lat, lon_extra_out, lat_extra_out, AEW_lon[existing, (slc_num - 1)], AEW_lat[existing, (slc_num - 1)], extra_dist)
                         # replace with "guess_lon_extra", "guess_lat_extra" for difference
 
-                        if win3_extra == True and curv_extra >= extrapolate_thresh:
-                            if EXTRAPOLATE_FORWARD == True:
+                        if win3_extra and curv_extra >= extrapolate_thresh:
+                            if EXTRAPOLATE_FORWARD:
                                 backward_dist = haversine(lon_extra_out, lat_extra_out, AEW_lon[existing, (slc_num - 1)], lat_extra_out)
                                 curv_lon_extra, n = find_nearest(lon, AEW_lon[existing, slc_num - 1])
                                 curv_lat_extra, n = find_nearest(lat, AEW_lat[existing, slc_num - 1])
@@ -1032,7 +1032,7 @@ def run_tracking(
                                     continue
                             AEW_lon[existing, slc_num] = lon_extra_out
                             AEW_lat[existing, slc_num] = lat_extra_out
-                    elif EXTRAPOLATE_SKIP == True:
+                    elif EXTRAPOLATE_SKIP:
                         if len(AEW_lon_slc[~np.isnan(AEW_lon_slc)]) >= extrapolate_time and AEW_lon[existing, (slc_num - 2)] <= extra_lon and AEW_lat[existing, (slc_num - 2)] <= lat_max:  # If track is long enough to do extrapolation, over ocean
                             if AEW_lon[existing, (slc_num - 2)] <= extra_transition:
                                 extra_it = extra_it_60
@@ -1068,7 +1068,7 @@ def run_tracking(
                                 centroid_weight = centroid_rad_extra
                             try:
                                 lont_off, latt_off, pvout_off, pvmask_off, lon_extra_out, lat_extra_out = general_centroid(lon, lat, curv_vort_data, centroid_weight, lat_guess_i, lon_guess_i, centroid_it_extra)
-                            except:
+                            except Exception:
                                 print("Something went wrong with centroid, possibly out of bounds")
                                 continue
                             # FIND THE CURVATURE VORTICITY VALUE AT THIS NEXT CENTER
@@ -1086,7 +1086,7 @@ def run_tracking(
                             # replace with "guess_lon_extra", "guess_lat_extra" for difference
                             center_distance = haversine(lon_extra_out, lat_extra_out, AEW_lon[existing, (slc_num - 2)], AEW_lat[existing, (slc_num - 2)])
 
-                            if win3_extra == True and curv_extra >= extrapolate_thresh and center_distance <= extra_dist2_final and lon_extra_out <= AEW_lon[existing, (slc_num - 3)]:
+                            if win3_extra and curv_extra >= extrapolate_thresh and center_distance <= extra_dist2_final and lon_extra_out <= AEW_lon[existing, (slc_num - 3)]:
                                 # if curv_extra >=extrapolate_thresh:
                                 # print('Boom')
                                 AEW_lon[existing, slc_num] = lon_extra_out
@@ -1127,7 +1127,7 @@ def run_tracking(
                             # RUN A CENTROID FINDER FOR THE NEXT TIME STEP
                             try:
                                 lont_off, latt_off, pvout_off, pvmask_off, lon_extra_out, lat_extra_out = general_centroid(lon, lat, curv_vort_data, centroid_weight, lat_guess_i, lon_guess_i, centroid_it_extra)
-                            except:
+                            except Exception:
                                 print("Something went wrong with centroid, possibly out of bounds")
                                 continue
                             # FIND THE CURVATURE VORTICITY VALUE AT THIS NEXT CENTER
@@ -1146,7 +1146,7 @@ def run_tracking(
                             # replace with "guess_lon_extra", "guess_lat_extra" for difference
                             center_distance = haversine(lon_extra_out, lat_extra_out, AEW_lon[existing, (slc_num - 3)], AEW_lat[existing, (slc_num - 3)])
 
-                            if win3_extra == True and curv_extra >= extrapolate_thresh and center_distance <= extra_dist3_final and lon_extra_out <= AEW_lon[existing, (slc_num - 3)]:
+                            if win3_extra and curv_extra >= extrapolate_thresh and center_distance <= extra_dist3_final and lon_extra_out <= AEW_lon[existing, (slc_num - 3)]:
                                 # if curv_extra >=extrapolate_thresh:
                                 # print('Boom')
                                 AEW_lon[existing, slc_num] = lon_extra_out
@@ -1155,7 +1155,7 @@ def run_tracking(
                     if ~np.isnan(AEW_lon[existing, slc_num]) and existing not in dont_extra_list and AEW_lon[existing, slc_num] < -60:
                         dont_extra_list.append(existing)
 
-            if cleanup == True:  # Cleanup is optional, relict of early tests. This only runs for initiation points.
+            if cleanup:  # Cleanup is optional, relict of early tests. This only runs for initiation points.
                 new_cont_out = cont_max
                 cont_out, init_out = execute_cleanup1(cont_max, init_max, data_mean, arb_thresh, deg_sep, res)
                 new_init_out = init_out
@@ -1194,7 +1194,7 @@ def run_tracking(
                     try:
                         win6, distance6, fwd_init = within_distance_direct(lon, lat, cent_lon[init_point], cent_lat[init_point], AEW_lon[existing, (slc_num - 2)], AEW_lat[existing, (slc_num - 2)], step_6hr_init)
                         win6_list.append(win6)
-                    except:
+                    except Exception:
                         if slc_num < 3:
                             print("Exception: Likely normal, not enough timesteps to run code")
                         else:
@@ -1221,14 +1221,14 @@ def run_tracking(
 
                 try:
                     lont, latt, pvout, pvmask, lon_new_pt, lat_new_pt = general_centroid(lon, lat, curv_vort_data, centroid_rad, lati, loni, centroid_it)
-                    if upper_limit == True:  # Here we make all points that are centered north of 20N and limit them to just 20
+                    if upper_limit:  # Here we make all points that are centered north of 20N and limit them to just 20
                         if lat_new_pt > 20 and lat_new_pt <= 25:  # Only allow points that are somewhat over the threshold, don't get too crazy
                             lat_new_pt = 20  # Set it equal to 20N now
                             print("Upper Limit Engaged")
                     lat_point_array.append(lat_new_pt)
                     lon_point_array.append(lon_new_pt)
 
-                except:
+                except Exception:
                     print("Exception -- something major went wrong and not sure why.")
                     continue
 
@@ -1256,12 +1256,12 @@ def run_tracking(
                         temp_bool3, temp_dist3, fwd3 = within_distance_direct(lon, lat, lon_point_array[cont_i], lat_point_array[cont_i], AEW_lon[existing, (slc_num - 1)], AEW_lat[existing, (slc_num - 1)], step_3hr)
                         temp_bool6, temp_dist6, fwd6 = within_distance_direct(lon, lat, lon_point_array[cont_i], lat_point_array[cont_i], AEW_lon[existing, (slc_num - 2)], AEW_lat[existing, (slc_num - 2)], step_6hr)
 
-                        if temp_bool3 == True:  # If it is within the specified range
+                        if temp_bool3:  # If it is within the specified range
                             temp_dist_list3.append(temp_dist3)
                             temp_fwd_list3.append(fwd3)
                             temp_lon_arr3.append(lon_point_array[cont_i])
                             temp_lat_arr3.append(lat_point_array[cont_i])
-                        elif temp_bool6 == True:  # Same for timesteps 6 hours ago
+                        elif temp_bool6:  # Same for timesteps 6 hours ago
                             temp_dist_list6.append(temp_dist6)
                             temp_fwd_list6.append(fwd6)
                             temp_lon_arr6.append(lon_point_array[cont_i])
@@ -1285,17 +1285,17 @@ def run_tracking(
                             continue
 
                         # Get some curvature value characteristics for later
-                        curv_lon_back, n = find_nearest(lon, temp_lon_list3[min_i])
-                        curv_lat_back, n = find_nearest(lat, temp_lat_list3[min_i])
+                        curv_lon_back, _ = find_nearest(lon, temp_lon_list3[min_i])
+                        curv_lat_back, _ = find_nearest(lat, temp_lat_list3[min_i])
 
                         curv_val_back = curv_vort_data[curv_lat_back, curv_lon_back]
 
-                        if force_bump == True:
-                            if temp_fwd_list3[min_i] == False and any(temp_fwd_list3):  # If the shortest distance is backwards and there exist points that are forward within the threshold..
-                                new_temp_fwd_list = temp_fwd_list3[temp_fwd_list3 == True]
-                                new_temp_lon_list = temp_lon_list3[temp_fwd_list3 == True]
-                                new_temp_lat_list = temp_lat_list3[temp_fwd_list3 == True]
-                                new_temp_dist_list = temp_dist_list3[temp_fwd_list3 == True]
+                        if force_bump:
+                            if not temp_fwd_list3[min_i] and any(temp_fwd_list3):  # If the shortest distance is backwards and there exist points that are forward within the threshold..
+                                # new_temp_fwd_list = temp_fwd_list3[temp_fwd_list3 == True]  # noqa: E712
+                                new_temp_lon_list = temp_lon_list3[temp_fwd_list3 == True]  # noqa: E712
+                                new_temp_lat_list = temp_lat_list3[temp_fwd_list3 == True]  # noqa: E712
+                                new_temp_dist_list = temp_dist_list3[temp_fwd_list3 == True]  # noqa: E712
 
                                 min_adj_i = np.argmin(new_temp_dist_list)
                                 if new_temp_dist_list[min_adj_i] <= bump_num * step_3hr:
@@ -1310,9 +1310,9 @@ def run_tracking(
                             back_cutoff = back_cutoff_land
                             back_cutoff_long = back_cutoff_long_land
                         fwd = temp_fwd_list3[min_i]
-                        if force_forward == True:
-                            if fwd == False:
-                                if AEW_lon[existing, (slc_num - 1)] != AEW_lon[existing, (slc_num - stuck_thresh)] or cut_stuck == False:
+                        if force_forward:
+                            if not fwd:
+                                if AEW_lon[existing, (slc_num - 1)] != AEW_lon[existing, (slc_num - stuck_thresh)] or not cut_stuck:
                                     if temp_dist_list3[min_i] <= back_cutoff:
                                         AEW_lon[existing, slc_num] = AEW_lon[existing, (slc_num - 1)]
                                         AEW_lat[existing, slc_num] = temp_lat_arr3[min_i]
@@ -1337,10 +1337,10 @@ def run_tracking(
                         if np.abs(temp_lat_arr6[min_i] - AEW_lat[existing, (slc_num - 2)]) >= land_lat_limit * 2:
                             continue
                         fwd = temp_fwd_list6[min_i]
-                        if force_forward == True:
-                            if fwd == False:
-                                if AEW_lon[existing, (slc_num - 2)] != AEW_lon[existing, (slc_num - stuck_thresh)] or cut_stuck == False:
-                                    if temp_dist_list6[min_i] <= back_cutoff_long and long_edit == True:
+                        if force_forward:
+                            if not fwd:
+                                if AEW_lon[existing, (slc_num - 2)] != AEW_lon[existing, (slc_num - stuck_thresh)] or not cut_stuck:
+                                    if temp_dist_list6[min_i] <= back_cutoff_long and long_edit:
                                         AEW_lon[existing, slc_num] = AEW_lon[existing, (slc_num - 2)]
                                         AEW_lat[existing, slc_num] = temp_lat_arr6[min_i]
                             else:
@@ -1350,7 +1350,7 @@ def run_tracking(
                             AEW_lon[existing, slc_num] = temp_lon_arr6[min_i]
                             AEW_lat[existing, slc_num] = temp_lat_arr6[min_i]
 
-        if (speed_limit == True) and "AEW_lon" in locals():
+        if speed_limit and "AEW_lon" in locals():
             for existing in range(np.shape(AEW_lon)[0]):  # First iterate over all the waves
                 AEW_lon_slc = AEW_lon[existing, :]
                 AEW_lat_slc = AEW_lat[existing, :]
@@ -1358,8 +1358,8 @@ def run_tracking(
                 if np.isnan(AEW_lon_slc[slc_num]):
                     continue
 
-                curv_lon, n = find_nearest(lon, AEW_lon_slc[slc_num])
-                curv_lat, n = find_nearest(lat, AEW_lat_slc[slc_num])
+                curv_lon, _ = find_nearest(lon, AEW_lon_slc[slc_num])
+                curv_lat, _ = find_nearest(lat, AEW_lat_slc[slc_num])
 
                 curv_val = curv_vort_data[curv_lat, curv_lon]
 
@@ -1392,10 +1392,10 @@ def run_tracking(
     AEW_lon = new_AEW_lon
 
     # Run smoothing savgol filter
-    reg_list = [num2date(i, time_units, only_use_cftime_datetimes=False) for i in time]
-    data_slc = 2
+    # reg_list = [num2date(i, time_units, only_use_cftime_datetimes=False) for i in time]
+    # data_slc = 2
 
-    if duplicate_removal == True:
+    if duplicate_removal:
         rm_dup_list, merge_list = AEW_duplicate(AEW_lon, 1, 1, 0.7)
 
         AEW_lon = np.delete(AEW_lon, rm_dup_list, axis=0)
@@ -1412,22 +1412,22 @@ def run_tracking(
     # plt.plot(AEW_lon_filter[data_slc,:], AEW_lat_filter[data_slc,:], 'b')
 
     # Run Linear Extender to replace missing times after filtering
-    if run_extender == True:
+    if run_extender:
         for row in range(np.shape(AEW_lon)[0]):
             data_lon_filter = AEW_lon_filter[row, :]
             data_lat_filter = AEW_lat_filter[row, :]
-            reg11, reg22, data_out_lon = extend_AEW(data_lon_filter, int(np.floor(smooth_len / 3)))
-            reg12, reg22, data_out_lat = extend_AEW(data_lat_filter, int(np.floor(smooth_len / 3)))
+            *_, data_out_lon = extend_AEW(data_lon_filter, int(np.floor(smooth_len / 3)))
+            *_, data_out_lat = extend_AEW(data_lat_filter, int(np.floor(smooth_len / 3)))
             AEW_lon_filter[row, :] = data_out_lon
             AEW_lat_filter[row, :] = data_out_lat
 
-    reg_list = [num2date(i, time_units, only_use_cftime_datetimes=False) for i in time]
+    # reg_list = [num2date(i, time_units, only_use_cftime_datetimes=False) for i in time]
 
     # -------------------------------------------------------------------------
     # END DATA CLEANUP
     ##### SAVE OUTPUT NETCDF4 DATAFILE
     # -------------------------------------------------------------------------
-    if save_data == True:
+    if save_data:
         # outfile = 'TRACKING/prelim_aew_tracks_out.nc'
 
         nlat = np.size(lat)
@@ -1555,7 +1555,7 @@ def run_postprocessing(
     year_used = real_year_used
     TC_distance = TC_merge_dist  # 500 #km
     lat_cut = TC_pair_lat_max
-    rad_used = radius_used
+    # rad_used = radius_used
     merge_distance = AEW_merge_dist  # Km
     connect_distance = AEW_forward_connect_dist  # 700 #km #Distance potentially "broken" waves can be connected if their end points imply westward propagation
     connect_distance_back = AEW_backward_connect_dist  # km #Same, but for waves that are near stationary or move in the wrong direction
@@ -1575,7 +1575,7 @@ def run_postprocessing(
     save_data_nc = netcdf_data_save  # Save out a NetCDF version of this data (Default: True)
 
     ### Prevent year issues
-    if year_used == "None" and pair_with_TC == True:
+    if year_used == "None" and pair_with_TC:
         raise Exception("Year must be specified if TC pairing option is turned on.")
     elif year_used == "None":
         year_used = 1000
@@ -1613,7 +1613,7 @@ def run_postprocessing(
             self.AEW_group = AEW_group
 
         def number_of_waves(self):
-            return len(AEW_group)
+            return len(self.AEW_group)
 
         def get_wave(self, wavenumber):
             return self.AEW_group[wavenumber - 1]
@@ -1622,7 +1622,7 @@ def run_postprocessing(
             waves_TC = []
             for i in range(len(self.AEW_group)):
                 TC_ans = self.AEW_group[i].connected_TC
-                if TC_ans == True:
+                if TC_ans:
                     waves_TC.append(i + 1)
             return waves_TC
 
@@ -1639,11 +1639,11 @@ def run_postprocessing(
                 for new_row in range(row + 1, np.shape(lon_in)[0]):  # Look at the data for upcoming rows
                     new_data = lon_in[new_row, :]
                     equal_num = np.abs(new_data - sample_data) <= close_cutoff
-                    equal_num = len(equal_num[equal_num == True])
+                    equal_num = len(equal_num[equal_num == True])  # noqa: E712
                     # print(old_equal_num, equal_num)
                     if equal_num != 0:
                         first_i = np.where(np.abs(new_data - sample_data) <= close_cutoff)[0][0]
-                        first_i2 = np.argwhere(new_data - sample_data <= close_cutoff)[0][0]
+                        # first_i2 = np.argwhere(new_data - sample_data <= close_cutoff)[0][0]
                         # print(first_i, first_i2)
                         beg_new = new_data[: (first_i + 1)]
                         beg_old = sample_data[: (first_i + 1)]
@@ -1693,8 +1693,8 @@ def run_postprocessing(
     lon = ncfile.variables["longitude"][:]
     AEW_lon = ncfile.variables["AEW_lon"][:]
     AEW_lat = ncfile.variables["AEW_lat"][:]
-    AEW_lon_smooth = ncfile.variables["AEW_lon_smooth"][:]
-    AEW_lat_smooth = ncfile.variables["AEW_lat_smooth"][:]
+    # AEW_lon_smooth = ncfile.variables["AEW_lon_smooth"][:]
+    # AEW_lat_smooth = ncfile.variables["AEW_lat_smooth"][:]
     curv_array = ncfile.variables["curv_data_mean"][:]
 
     reg_list = [num2date(i, time_units, only_use_cftime_datetimes=False) for i in time_data]
@@ -1717,7 +1717,7 @@ def run_postprocessing(
                     existing_pair = True
                     break
 
-            if existing_pair == True:
+            if existing_pair:
                 # print('did it')
                 continue
             for slc_num in range(len(new_AEW_lon_slc)):
@@ -1875,11 +1875,11 @@ def run_postprocessing(
 
             return np.isnan(y), lambda z: z.nonzero()[0]
 
-        del_list = []
+        # del_list = []
         """Oftentimes, a wave is "lost" to the tracker for 3-9 hours due to not meeting a threshold requirement, but then
         re-acheiving this requirement later on. This leaves annoying "nan" values in the missing places. Thus, this script
         will fill these holes with linear interpolated values."""
-        cutoff_len = int(np.round(days_remove * 24 / temporal_res))
+        # cutoff_len = int(np.round(days_remove * 24 / temporal_res))
         for row in range(np.shape(AEW_lon_in)[0]):
             AEW_lon_slc = AEW_lon_in[row, :]
             AEW_lat_slc = AEW_lat_in[row, :]
@@ -1911,7 +1911,7 @@ def run_postprocessing(
     AEW_lat = new_AEW_lat
     AEW_lon = new_AEW_lon
 
-    if duplicate_removal == True:
+    if duplicate_removal:
         rm_dup_list, merge_list = AEW_duplicate(AEW_lon, 1, 1, 0.7)
 
         AEW_lon = np.delete(AEW_lon, rm_dup_list, axis=0)
@@ -1927,7 +1927,7 @@ def run_postprocessing(
     linked_TC_wave = []
     linked_TC_wave_time = []
 
-    if pair_with_TC == True:
+    if pair_with_TC:
         hurdat_atl = tracks.TrackDataset(basin="north_atlantic", source="hurdat", include_btk=True)
         season_pull = hurdat_atl.get_season(int(year_used))
         TC_id_list = season_pull.summary()["id"]
@@ -2012,7 +2012,7 @@ def run_postprocessing(
             over_africa = True
         else:
             over_africa = False
-        if pair_with_TC == True:
+        if pair_with_TC:
             if slc_num in TC_linked_num:  # If the wave number is included in the wave list for linked TCs
                 connected_TC = True
                 name_i = np.where(TC_linked_num == slc_num)
@@ -2080,12 +2080,12 @@ def run_postprocessing(
             # TC_genesis_time_nc = [np.NaN]
             # TC_connect_name_nc = [np.NaN]
 
-    if save_data == True:
+    if save_data:
         data_save_out = save_obj_file  #'TRACKING/AEW_tracks_post_processed.pkl'
         pickle.dump(season_object, open(data_save_out, "wb"))
         print("Saved")
 
-    if save_data_nc == True:  ## Also want to save the raw output as NC file for other scripts to use
+    if save_data_nc:  ## Also want to save the raw output as NC file for other scripts to use
         outfile = save_nc_file  #'TRACKING/AEW_tracks_post_processed.nc'
 
         nlat = np.size(lat)
@@ -2175,7 +2175,7 @@ def run_postprocessing(
         TC_storm_name[:] = AEW_name_list
         ncout.close()
 
-    if save_hovmoller == True:
+    if save_hovmoller:
         curv_cont_hov = [-12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
 
         fig = plt.figure(figsize=(10, 8))
@@ -2184,14 +2184,14 @@ def run_postprocessing(
 
         for wave_num in range(np.shape(AEW_lon)[0]):
             AEW_lon_plot = np.ma.masked_array(AEW_lon[wave_num, :], AEW_lat[wave_num, :] > hov_AEW_lat_lim)
-            if np.nanmax(AEW_lon[wave_num, :]) < -17 and hov_over_africa_color == True:
+            if np.nanmax(AEW_lon[wave_num, :]) < -17 and hov_over_africa_color:
                 ind_col = "dimgrey"
                 z_d = 4
             else:
                 ind_col = "k"
                 z_d = 5
             plt.plot(AEW_lon_plot, reg_list, color=ind_col, linewidth=3, zorder=z_d)
-        if pair_with_TC == True:
+        if pair_with_TC:
             for TC_num in range(len(TC_id_list)):
                 # Storm type array
 
@@ -2215,7 +2215,7 @@ def run_postprocessing(
                     try:
                         ax.scatter(current_lon[current_lat <= lat_cut], current_date[current_lat <= lat_cut], s=30, marker="+", color="b", zorder=7)
                         ax.scatter(invest_lon[invest_lat <= lat_cut], invest_date[invest_lat <= lat_cut], s=30, marker="+", color="g", zorder=7)
-                    except:
+                    except Exception:
                         print("Failed plotting TCs")
                         pass
         ax.set_ylim([reg_list[0], reg_list[-1]])
