@@ -87,7 +87,7 @@ def compute_nondiv_wind(input_file, output_file="wind_700_helmholtz.nc"):
         # write netCDF file
         # ------------------
 
-        if SAVE_OUTPUT == True:
+        if SAVE_OUTPUT:
             nlat = np.size(lats)
             nlon = np.size(lons)
             # open a netCDF file to write

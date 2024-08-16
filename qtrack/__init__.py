@@ -6,6 +6,16 @@ __version__ = "0.0.1"
 
 from .core import COMPUTE_CURV_VORT_NON_DIV_UPDATE, download_examples, prep_data
 
+__all__ = [
+    "COMPUTE_CURV_VORT_NON_DIV_UPDATE",
+    "download_examples",
+    "prep_data",
+    #
+    "season",
+    "AEW",
+    "AEW_CCKW",
+]
+
 
 class season:
     def __init__(self, year, AEW_group):
@@ -22,13 +32,27 @@ class season:
         waves_TC = []
         for i in range(len(self.AEW_group)):
             TC_ans = self.AEW_group[i].connected_TC
-            if TC_ans == True:
+            if TC_ans:
                 waves_TC.append(i + 1)
         return waves_TC
 
 
 class AEW:
-    def __init__(self, year, number, time, lon, lat, smooth_lon, smooth_lat, strength, over_africa, connected_TC, connected_TC_name="N/A", genesis_time="N/A"):
+    def __init__(
+        self,
+        year,
+        number,
+        time,
+        lon,
+        lat,
+        smooth_lon,
+        smooth_lat,
+        strength,
+        over_africa,
+        connected_TC,
+        connected_TC_name="N/A",
+        genesis_time="N/A",
+    ):
         self.year = year
         self.number = number
         self.time = time
@@ -48,7 +72,27 @@ class AEW:
 
 class AEW_CCKW:
     def __init__(
-        self, year, number, time, lon, lat, smooth_lon, smooth_lat, strength, over_africa, connected_TC, TB_lat_range, VP_lat_range, CCKW_TB, CCKW_VP, sig_TB_peak, sig_VP_peak, sig_TB_valley, sig_VP_valley, connected_TC_name="N/A", genesis_time="N/A"
+        self,
+        year,
+        number,
+        time,
+        lon,
+        lat,
+        smooth_lon,
+        smooth_lat,
+        strength,
+        over_africa,
+        connected_TC,
+        TB_lat_range,
+        VP_lat_range,
+        CCKW_TB,
+        CCKW_VP,
+        sig_TB_peak,
+        sig_VP_peak,
+        sig_TB_valley,
+        sig_VP_valley,
+        connected_TC_name="N/A",
+        genesis_time="N/A",
     ):
         self.year = year
         self.number = number
