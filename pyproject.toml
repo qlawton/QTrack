@@ -1,5 +1,6 @@
 [tool.ruff]
 target-version = "py38"
+line-length = 250  # FIXME
 
 [tool.ruff.lint]
 select = [
