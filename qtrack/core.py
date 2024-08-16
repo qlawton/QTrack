@@ -4,10 +4,10 @@ Core Functions for the QTrack algorithm and associated functions.
 Written by Quinton Lawton.
 """
 
-# IMPORT STATEMENTS
 import datetime
 import os
 import time as tm
+import warnings
 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
@@ -16,6 +16,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
+import pandas as pd
 import xarray as xr
 from cartopy.mpl.ticker import LatitudeFormatter, LongitudeFormatter
 from joblib import Parallel, delayed
@@ -24,9 +25,6 @@ from netCDF4 import Dataset, num2date
 from numpy import dtype
 
 set_loky_pickler("dill")
-import warnings
-
-import pandas as pd
 
 
 class season:
@@ -44,7 +42,7 @@ class season:
         waves_TC = []
         for i in range(len(self.AEW_group)):
             TC_ans = self.AEW_group[i].connected_TC
-            if TC_ans == True:
+            if TC_ans:
                 waves_TC.append(i + 1)
         return waves_TC
 
@@ -149,7 +147,7 @@ def prep_data(data_in, cut_lev_val=700, data_out="prepped_data_for_tracking.nc")
     lev_names = ["lev", "level", "levels"]
     wind_names = ["u", "v"]
 
-    correct_n_dims = 3
+    # correct_n_dims = 3
 
     def check_and_resample(input_data, time_var="time", interval="6h"):
         if time_var not in input_data:
@@ -233,7 +231,7 @@ def prep_data(data_in, cut_lev_val=700, data_out="prepped_data_for_tracking.nc")
         data_xr = data_xr.reindex(longitude=list(reversed(data_xr.longitude)))
 
     ### Finally, check if the longitude is 0 to 360
-    min_lon = data_xr["longitude"].min().values
+    # min_lon = data_xr["longitude"].min().values
     max_lon = data_xr["longitude"].max().values
 
     if max_lon > 180:
@@ -250,8 +248,6 @@ def prep_data(data_in, cut_lev_val=700, data_out="prepped_data_for_tracking.nc")
 
 
 def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nondiv=True, SAVE_IMAGE=False, SAVE_OUTPUT=True, gif_dir_in=""):
-    import time
-
     dir_ani_frame = "frames_R" + str(radius)
 
     # ### IMPORTANT DIRECTORIES AND CUSTOMIZATIONS
@@ -260,11 +256,11 @@ def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nond
     data_in = data_in
     data_out = data_out
 
-    if SAVE_IMAGE == True:
+    if SAVE_IMAGE:
         print("Setting Up | Output to: " + data_out)
         try:
             os.mkdir(gif_dir + dir_ani_frame)
-        except:
+        except Exception:
             print("Directory could not be created -- may already exist")
 
     save_dir = gif_dir + dir_ani_frame + "/"
@@ -293,7 +289,7 @@ def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nond
         dataproj = ccrs.PlateCarree()
 
         # Define the extent of our static atlantic plot
-        if zoom == True:
+        if zoom:
             lon1 = -70
             lon2 = 30
             lat1 = 5
@@ -330,7 +326,7 @@ def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nond
     def GetBG(lon, lat, data_file, res, radius):
         # from joblib import Parallel, delayed
 
-        start = tm.time()
+        start = tm.time()  # noqa: F841
 
         def get_dist_meters(lon, lat):
             earth_circ = 6371 * 2 * np.pi * 1000  # earth's circumference in meters
@@ -363,7 +359,7 @@ def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nond
         avg_grid = np.zeros(data_shape)
 
         def rad_mask(i, j, dx, dy, radius):
-            start = tm.time()
+            start = tm.time()  # noqa: F841
 
             earth_circ = 6371 * 2 * np.pi * 1000  # earth's circumference in meters
             lat_met = earth_circ / 360  # get the number of meters in a degree latitude (ignoring "bulge")
@@ -411,17 +407,17 @@ def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nond
 
             radial_array = (np.sqrt(np.square(i_array_sub) + np.square(j_array_sub)) / 1000) < radius  # in km
             boolean_array[i_st:i_end, j_st:j_end] = radial_array
-            end = tm.time()
+            end = tm.time()  # noqa: F841
             # print(end - start)
             return boolean_array
 
         for y in i_bounds:  # This will iterate over ALL given points and calculate a background average
             for x in j_bounds:
                 outMask = rad_mask(y, x, dx, dy, radius)
-                avg_grid[y, x] = np.mean(data_file[outMask == True])
+                avg_grid[y, x] = np.mean(data_file[outMask])
             # Parallel(n_jobs=-1)(delayed(run_code)(y, x) for x in j_bounds)
 
-        end = tm.time()
+        end = tm.time()  # noqa: F841
         # print('Time elapsed:'+str(end-start)+' s')
 
         return avg_grid
@@ -441,7 +437,7 @@ def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nond
     lat = nclat
     lon = nclon
 
-    if nondiv == False:
+    if not nondiv:
         u_wnd = nc_file["u"].values
         v_wnd = nc_file["v"].values
     else:
@@ -461,7 +457,7 @@ def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nond
         set_radius = radius
         curv_array = GetBG(LON, LAT, curv_vort_data, res, set_radius)
 
-        if SAVE_IMAGE == True:
+        if SAVE_IMAGE:
             curv_cont = [-12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
             fig, ax = static_background(zoom=True)
             valid_time_dt = num2date(time[slc_num], time_units, only_use_cftime_datetimes=False)
@@ -469,14 +465,14 @@ def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nond
             ax.set_title("DATA_OUT:" + str(set_radius) + "km Radially-Averaged Curvature Vorticity (10e-6 s-1)", {"fontsize": 16}, loc="left")
             ax.set_title(f"VALID: {valid_time}", {"fontsize": 16}, loc="right")
             layer1 = ax.contourf(lon, lat, curv_array * 10**6, curv_cont, cmap=matplotlib.cm.get_cmap("RdGy_r"))
-            cbar = fig.colorbar(layer1, orientation="horizontal", pad=0.05, shrink=1, aspect=30, extendrect=True, ticks=curv_cont)
+            _ = fig.colorbar(layer1, orientation="horizontal", pad=0.05, shrink=1, aspect=30, extendrect=True, ticks=curv_cont)
 
             temp_file = save_dir + "curv_vort_helmholz" + "_R" + str(set_radius) + "_" + str(slc_num) + ".png"
             # file_list.append(temp_file)
             fig.savefig(temp_file, bbox_inches="tight")
             plt.close()
 
-        if SAVE_OUTPUT == True:
+        if SAVE_OUTPUT:
             np.save(out_name, curv_array)
 
     start = tm.time()
@@ -484,7 +480,7 @@ def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nond
     end = tm.time()
     print("Time to run computation: " + str(end - start))
 
-    if SAVE_IMAGE == True:
+    if SAVE_IMAGE:
         file_list = []
         for i in np.arange(len(time)):
             temp_file = save_dir + "curv_vort_helmholz_R" + str(radius) + "_" + str(i) + ".png"
@@ -495,7 +491,7 @@ def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nond
                 image = imageio.imread(filename)
                 writer.append_data(image)
 
-    if SAVE_OUTPUT == True:
+    if SAVE_OUTPUT:
         for i in np.arange(len(time)):
             in_file = data_dir + "curv_temp_data_" + str(i) + ".npy"
             temp_file = np.load(in_file)
