@@ -52,4 +52,3 @@ Default input path is "CURV_VORT/RADIAL_AVG/radial_avg_curv_vort.nc", default wi
 This step computes the netCDF4 files and saves the data there. It also tries to clean up the tracked AEW data. Importantly, there is a setting that eliminates AEWs that are not at least 2 days long. This can be adjusted within the script if necessary. There is also a feature to identify developing AEWs using HURDAT data (ONLY use this for reanalysis inputs), but this is buggy at the moment. This is why it is required that a year be input into this call, as this allows the code to select the correct year for comparision.
 
 `python AEW_postprocessing.py [YEAR OF DATA (required)]`
-

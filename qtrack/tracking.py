@@ -2223,4 +2223,3 @@ broken tracks.
         cbar.set_label('Curv. Vort. (Avg. 5-20N, 1e-6)', fontsize = 12)
         plt.savefig(save_hov)
         plt.close()
-

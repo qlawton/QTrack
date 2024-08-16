@@ -56,6 +56,3 @@ for year_i in range(len(year_list)):
     elapsed_time = tstart - tend
     print('Time to run computation: '+ str(round(tend - tstart, 2))+ ' seconds | '+str(round((tend - tstart)/60,2))+ ' minutes')
     print()
-
-
-
