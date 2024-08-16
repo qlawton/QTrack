@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
 """
 AEW Tracking with inspiration from the Elless and Torn (2018) and Brammer and Thorncroft (2015) methodologies.
-Use of curvature vorticity field in general is the result of work shown by Berry et al. (2007). 
-Associated post-processing, especially the reconnection of tracks, incorporates some of the elements of 
-similar work by Bain et al. (2014). However, the combinitation of these methods here is unique and this 
-code runs differently for waves over Africa, waves over the Atlantic east of 60W, and waves in the 
+Use of curvature vorticity field in general is the result of work shown by Berry et al. (2007).
+Associated post-processing, especially the reconnection of tracks, incorporates some of the elements of
+similar work by Bain et al. (2014). However, the combinitation of these methods here is unique and this
+code runs differently for waves over Africa, waves over the Atlantic east of 60W, and waves in the
 Carribbean and Gulf west of 60W.
 
 This python code was written by Quinton Lawton at the University of Miami/RSMAS.
@@ -19,8 +18,10 @@ at quinton.lawton@rsmas.miami.edu.
 #The following variables control the data being ingested, the name of the system
 #(and corresponding datafiles) being focused on, and information on the radius
 #of curvature vorticity averaging we want to pull from.
-import numpy as np
 import sys
+
+import numpy as np
+
 np.warnings.filterwarnings('ignore')
 
 #### INFO OF DATA TO RUN ON #####
@@ -46,7 +47,7 @@ speed_limit = True #Turn on or off forward speed limit, prevening backward motio
 # -----------------------------------------------------
 # -- Over land, the tracker uses a similar method to that of Elless and Torn (2018) to add wave points. This
 #is also used as a backup method over the ocean (ONLY EAST OF TRANSITION LONGITUDE) if extrapolation does not
-#extend the wave, typically due to meridional shifts in wave position. 
+#extend the wave, typically due to meridional shifts in wave position.
 
 
 banding_t = True # If True, will look at 6 bands (5-15, 6-16,...10-20) (default: True)
@@ -63,7 +64,7 @@ force_bump = True #Preference "forward" (westward) points to be appended to exis
 #NOTE -- IGNORE 3/6 hr denotations. In reality, these refer to 1 or 2 temporal time steps backwards (for 6hr data, that would be 6hr and 12hr not 3hr and 6hr)
 step_3hr = 700 #How close new AEW point must be to existing AEW, looking at 1 timestep before (KM) (default: 700km)
 step_6hr = 1000 #Same but looking at track data for 2 timesteps before (KM) (default: 1000km)
-bump_num = 500./step_3hr #(NOTE: NOT RELEVANT IN FINAL VERSION OF CODE) When "bumping" points (if turned on), only do so for points within this RATIO of the forward step (i.e. 5/8*800 = 500KM) 
+bump_num = 500./step_3hr #(NOTE: NOT RELEVANT IN FINAL VERSION OF CODE) When "bumping" points (if turned on), only do so for points within this RATIO of the forward step (i.e. 5/8*800 = 500KM)
 back_cutoff_land = 100 #Only consider "backward" points within this radius of existing AEW (KM), here over land (default: 100km)
 back_cutoff_ocean = 300 #Same setting as before, but now over teh ocean (default: 300km)
 back_cutoff_long_land = 100 #"Backward" point setting but for extending waves with a missing timestep, land (default: 100km)
@@ -92,7 +93,7 @@ stuck_lon = 2
 # and not too weak. This is to prevent runaway track extension and to try to keep the tracker from following
 # unrelated blobs of curvature vorticity.
 
-##### OUTPUT 
+##### OUTPUT
 EXTRAPOLATE = True #Turn on or off the extrapolation entirely (Default, True)
 EXTRAPOLATE_SKIP = True #Allow extrapolation code to run again 2-3 timesteps back in case wave was only temporarily lost (Default: True)
 EXTRAPOLATE_FORWARD = True #Allow thresholds to prevent too much extrapolation in wrong direction, with parameters set below (Default: True)
@@ -121,7 +122,7 @@ extra_backcut = 100 #Maximum distance (km) "backwards" (to east) extrapolation c
 #### MASS CENTROID SETTINGS ####
 # -----------------------------------------------------
 # A curvature voticity centroid is run on local maxima before distance testing and either AEW initation or adding of points.
-centroid_rad = 600 #Radius to weight centroid 
+centroid_rad = 600 #Radius to weight centroid
 centroid_rad_extra = 600 #Radius to weight extrapolation centroid
 centroid_rad_extra_60 = 600 #Same as above, but west of transition longitude
 centroid_it = 0 #Number of iterations to run centroid code for banding
@@ -131,12 +132,12 @@ centroid_it_extra = 0 #Same as above, but for the extrapolation code
 #### CLEANUP SETTINGS ####
 # -----------------------------------------------------
 
-cleanup = True #Turn cleanup of points on/off 
+cleanup = True #Turn cleanup of points on/off
 upper_limit = False #old, obsolete feature. (default: False)
 cut_stuck = False# old, obsolute feature. (default: False)
 days_remove = 2 #Number of days a AEW is required to last to be put in data
 deg_sep = 2 #Degrees of separations initiation points must be from each other.
-arb_thresh = 0.5e-6 
+arb_thresh = 0.5e-6
 smooth_len = 7
 
 
@@ -151,21 +152,19 @@ stuck_thresh = int(stuck_thresh_day*24/temp_res)
 # -----------------------------------------------------------------------------
 
 # IMPORT STATEMENTS
-import numpy as np
-import datetime
-from netCDF4 import Dataset, num2date
-import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
-import matplotlib
-from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+import time as tm
+
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-import metpy.calc as mpcalc
-import time as tm
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
+import numpy as np
+from cartopy.mpl.ticker import LatitudeFormatter, LongitudeFormatter
+from netCDF4 import Dataset, num2date
 from scipy import signal
-from geopy.distance import geodesic
-from sklearn.linear_model import LinearRegression
 from scipy.signal import savgol_filter
+from sklearn.linear_model import LinearRegression
+
 
 # USER-DEFINED FUNCTIONS
 def find_nearest(array, value):
@@ -176,27 +175,27 @@ def find_nearest(array, value):
 
 
 def haversine(lon1, lat1, lon2, lat2):
-    from math import radians, cos, sin, asin, sqrt
+    from math import asin, cos, radians, sin, sqrt
     """
-    Calculate the great circle distance between two points 
+    Calculate the great circle distance between two points
     on the earth (specified in decimal degrees)
     """
-    # convert decimal degrees to radians 
+    # convert decimal degrees to radians
     lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
-    # haversine formula 
-    dlon = lon2 - lon1 
-    dlat = lat2 - lat1 
+    # haversine formula
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
     a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-    c = 2 * asin(sqrt(a)) 
+    c = 2 * asin(sqrt(a))
     # Radius of earth in kilometers is 6371
     km = 6371* c
     return km
 
 def rad_mask(i, j, dx, dy, radius):
     '''This is a computationally efficient (at least, in python-world) way of calculating a mask of gridpoints around a
-    center point. This generates an array of points with values corresponding to the distance from some center point. 
-    Then the code masks out any values above a certain radius. 
-    
+    center point. This generates an array of points with values corresponding to the distance from some center point.
+    Then the code masks out any values above a certain radius.
+
     This uses the assumption of a spherical Earth, not accounting for the equatorial "bulge" in real life.'''
     start = tm.time()
 
@@ -213,8 +212,8 @@ def rad_mask(i, j, dx, dy, radius):
     # Before doing this, we recognize something -- there is a max radius in the x and y direction that will
     # be computed. To save on computational time, we need to slice out the extraneous points that we already
     # know from this NOT to be in the circle. How? We know the absolute highest distance between gridspaces
-    # will be the maximum value of latitude on the elliptical earth... ~ 111 km. So slice out roughly a 112km "box" 
-    # plus one gridbox for buffer. 
+    # will be the maximum value of latitude on the elliptical earth... ~ 111 km. So slice out roughly a 112km "box"
+    # plus one gridbox for buffer.
     i_st = (i-(buffer+1))
     i_end = (i+(buffer+1))
     j_st = (j-(buffer+1))
@@ -242,76 +241,76 @@ def rad_mask(i, j, dx, dy, radius):
     end = tm.time()
     #print(end - start)
     return boolean_array
-    
+
 def general_centroid(x_in, y_in, PV_in, radius, lati, loni, it, exclude=True):
     '''Similar to that used for calculating PV centers, this computes a centroid point for a given field, using a prescribed
     radius as specified in the function input. Can iterate a given number of times: set in=0 for no iterations.
-    
+
     Uses the more computationally efficient (rad_mask) function to test if a point is within a radial distance or not.'''
     #start= time.time()
-    
+
     # What does our lat/lon refer to?
     guess_lat = y_in[lati]
     guess_lon = x_in[loni]
     #Other important stuff
     res = 1
     #box_num = 6/res; #First number is the degrees you want to cut out from the dataset for analysis
-    
+
     def get_dist_meters(lon, lat):
         earth_circ = 6371*2*np.pi*1000 #earth's circumference in meters
         lat_met = earth_circ/360 #get the number of meters in a degree latitude (ignoring "bulge")
         lat_dist = np.gradient(lat, axis=0)*lat_met
         lon_dist = np.gradient(lon, axis=1)*np.cos(np.deg2rad(lat))*lat_met
-        return lon_dist, lat_dist 
-    
-   
+        return lon_dist, lat_dist
+
+
     ## FIRST ITERATION ##
     #use the last bt_lat, bt_lon as the "genesis point" and commence slicing to make data sizes more managable
     lati, latval = find_nearest(y_in, guess_lat)
     loni, lonval = find_nearest(x_in, guess_lon)
-    
+
     #Commence slicing out the correct data
     #lat_slice = slice(int(lati-box_num),int(lati+box_num))
     #lon_slice = slice(int(loni-box_num),int(loni+box_num))
     lon_new = x_in#[lon_slice]
     lat_new = y_in#[lat_slice]
     PV_slice = PV_in#[lat_slice,lon_slice]
-    #Get the distance array for later use    
-    
+    #Get the distance array for later use
+
     #Make a meshed grid
     LON_X, LAT_Y = np.meshgrid(lon_new, lat_new)
     dx, dy = get_dist_meters(LON_X, LAT_Y)
-    
+
     #Finally, output a 1/0 filter for PV within the given radius
     #pv_filt = inner_filter(lat_new, lon_new, guess_lat, guess_lon, radius)
     pv_filt = rad_mask(lati, loni, dx, dy, radius)
-    
+
     PV_mask = PV_slice.copy()
     lon_mask = LON_X.copy()
     lat_mask = LAT_Y.copy()
     PV_mask[pv_filt == 0] = np.NaN
     lon_mask[pv_filt == 0] = np.NaN
     PV_mask[pv_filt== 0] = np.NaN
-    
+
         #Mask out (for all three fields) the filtered PV locations
     #PV_mask = np.ma.masked_where(pv_filt==0, PV_slice).copy()
     #lon_mask = np.ma.masked_where(pv_filt==0, LON_X).copy()
     #lat_mask = np.ma.masked_where(pv_filt==0, LAT_Y).copy()
-    
+
     if exclude == True:
         PV_mask[PV_mask<0] = np.NaN
         lon_mask[PV_mask<0] = np.NaN
         lat_mask[PV_mask<0] = np.NaN
 
-    
+
     #Calculate the center of mass, finally
     x_cent = np.nansum(lon_mask*PV_mask)/np.nansum(PV_mask)
     y_cent = np.nansum(lat_mask*PV_mask)/np.nansum(PV_mask)
-    
+
     ## LOOPING THE ITERATIONS ##
-    #Now we will iterate over this it-1 times to converge on the true weighted mass. Each time, we will filter based on 
+    #Now we will iterate over this it-1 times to converge on the true weighted mass. Each time, we will filter based on
     #the previous answer's "guess/calculation" of where the PV weighted center is.
-    
+
     if it == 0: #This means we are running to convergence
         dist_check = 100
         loop_it = 0
@@ -320,9 +319,9 @@ def general_centroid(x_in, y_in, PV_in, radius, lati, loni, it, exclude=True):
                 break
             old_x = x_cent
             old_y = y_cent
-            x_centi, n = find_nearest(lon_new, x_cent)      
-            y_centi, n = find_nearest(lat_new, y_cent)  
-            
+            x_centi, n = find_nearest(lon_new, x_cent)
+            y_centi, n = find_nearest(lat_new, y_cent)
+
             try:
                 pv_filt = rad_mask(y_centi, x_centi, dx, dy, radius)
             except:
@@ -335,21 +334,21 @@ def general_centroid(x_in, y_in, PV_in, radius, lati, loni, it, exclude=True):
             PV_mask[pv_filt == 0] = np.NaN
             lon_mask[pv_filt == 0] = np.NaN
             PV_mask[pv_filt== 0] = np.NaN
-            
+
             if exclude == True:
                 PV_mask[PV_mask<0] = np.NaN
                 lon_mask[PV_mask<0] = np.NaN
                 lat_mask[PV_mask<0] = np.NaN
-            
+
             x_cent = np.nansum(lon_mask*PV_mask)/np.nansum(PV_mask)
             y_cent = np.nansum(lat_mask*PV_mask)/np.nansum(PV_mask)
-            
+
             dist_check = haversine(x_cent, y_cent, old_x, old_y)
             loop_it = loop_it + 1
     else:
         for step in np.arange(it-1):
             #print(x_cent, y_cent)
-            x_centi, n = find_nearest(lon_new, x_cent)      
+            x_centi, n = find_nearest(lon_new, x_cent)
             y_centi, n = find_nearest(lat_new, y_cent)
             try:
                 pv_filt = rad_mask(y_centi, x_centi, dx, dy, radius)
@@ -363,16 +362,16 @@ def general_centroid(x_in, y_in, PV_in, radius, lati, loni, it, exclude=True):
             PV_mask[pv_filt == 0] = np.NaN
             lon_mask[pv_filt == 0] = np.NaN
             PV_mask[pv_filt== 0] = np.NaN
-            
+
             if exclude == True:
                 PV_mask[PV_mask<0] = np.NaN
                 lon_mask[PV_mask<0] = np.NaN
                 lat_mask[PV_mask<0] = np.NaN
-            
+
             x_cent = np.nansum(lon_mask*PV_mask)/np.nansum(PV_mask)
             y_cent = np.nansum(lat_mask*PV_mask)/np.nansum(PV_mask)
-        
-        
+
+
     #end = time.time()
     #print(str(end-start)+' secs')
     return lon_new, lat_new, pv_filt, PV_mask, x_cent, y_cent
@@ -381,8 +380,8 @@ def find_maxima(data_in, lon, lat, lon_west, lon_east, thres_init, thres_cont, s
     '''This finds local maxima for a 5-20N AVERAGE VALUE AT EACH LONGITUDE POINT. Two thresholds are considered:
     -- "Init" is the threshold for initially defining a AEW, and here is ONLY defined if east of the "lon_land" value
     -- "Cont" is the threshold for continuing the tracking/propagation of an existing AEW, and is defined everywhere.'''
-    avg_list = []    
-    
+    avg_list = []
+
     def find_nearest(array, value): #This way, we can set the lat range from 5 to 20N
         array = np.asarray(array)
         idx = (np.abs(array - value)).argmin()
@@ -393,7 +392,7 @@ def find_maxima(data_in, lon, lat, lon_west, lon_east, thres_init, thres_cont, s
 #         band_len = 8
 #     else:
 #         band_len = 6
-    
+
     ## ----- TAKE ELLESS'S FEEDBACK INTO CONSIDERATION, CONSIDER 5 SEPARATE "BANDS" -----
     if separate_bands == True:
         lat_extra_end, n = find_nearest(lat, 15)
@@ -404,11 +403,11 @@ def find_maxima(data_in, lon, lat, lon_west, lon_east, thres_init, thres_cont, s
             test_vals = np.zeros((band_len,np.shape(data_in[lat_extra_st:lat_extra_end, :])[1]))
         else:
             band_vals = np.zeros((band_len,np.shape(data_in[lat_extra_end:lat_extra_st, :])[1]))
-            test_vals = np.zeros((band_len,np.shape(data_in[lat_extra_end:lat_extra_st, :])[1]))    
+            test_vals = np.zeros((band_len,np.shape(data_in[lat_extra_end:lat_extra_st, :])[1]))
         for i in range(band_len): #We will have six bands
             lat_avg_end, n = find_nearest(lat, 15+i) #We only want to average the cells in a 5-20N range
             lat_avg_st, n = find_nearest(lat, 5+i)
-            
+
             if lat_avg_end > lat_avg_st:
                 data_slice = data_in[lat_avg_st:lat_avg_end, :]
             else:
@@ -419,21 +418,21 @@ def find_maxima(data_in, lon, lat, lon_west, lon_east, thres_init, thres_cont, s
                 banded_noneg[banded_noneg<0] = np.NaN
             else:
                 banded_noneg = data_slice.copy()
-                
+
             data_mean_int = np.nanmean(banded_noneg, axis = 0)
             data_mean_both = np.nanmean(data_slice, axis = 0)
             band_vals[i,:] = data_mean_int[:]
             test_vals[i,:] = data_mean_both[:]
-        
+
         data_mean_noneg = np.nanmax(band_vals, axis = 0)
         data_mean = np.nanmax(test_vals, axis = 0)
         lat_center = np.argmax(band_vals, axis = 0)+10
-        
+
         #Need to get final list of latitudes that is the same length as the init/cont out. Actually right now only
         #init since we only initate new waves with the latitude banding... use previous latitude for existing wavese
         #print(lat_center)
-        
-        
+
+
     else:
         lat_avg_st, n = find_nearest(lat, 15) #We only want to average the cells in a 5-20N range
         lat_avg_end, n = find_nearest(lat, 5)
@@ -450,44 +449,44 @@ def find_maxima(data_in, lon, lat, lon_west, lon_east, thres_init, thres_cont, s
     if smooth == True:
         data_mean_noneg = savgol_filter(data_mean_noneg, 3, 2)
         data_mean = savgol_filter(data_mean, 3, 2)
-    
+
     init_i = signal.argrelextrema(data_mean, np.greater)[0]
     cont_i = signal.argrelextrema(data_mean, np.greater)[0]
-    
+
     init_max = data_mean_noneg[init_i].astype(float)
     cont_max = data_mean_noneg[cont_i].astype(float)
-    
+
     if (np.isnan(init_max)).any():
         init_max[np.isnan(init_max)] = 0
     if (np.isnan(cont_max)).any():
         cont_max[np.isnan(cont_max)] = 0
-    
+
     #Filter out maximas such that they have to both be positive and greater than a given threshold
     init_max = init_max[lon[init_i]<40]
     init_i = init_i[lon[init_i] <40]
     init_max = init_max[lon[init_i]>-100]
     init_i = init_i[lon[init_i]>-100]
-    init_i = init_i[init_max >= thres_init] 
-     
+    init_i = init_i[init_max >= thres_init]
+
     cont_max = cont_max[lon[cont_i] < 40]
     cont_i = cont_i[lon[cont_i] < 40]
     cont_max = cont_max[lon[cont_i] > -100]
     cont_i = cont_i[lon[cont_i] > -100]
-    cont_i = cont_i[cont_max >= thres_cont] 
-    
+    cont_i = cont_i[cont_max >= thres_cont]
+
     #Now filter "initial" AEWs such that they have to have a longitude greater than 17W (the Africa land cutoff)
     lon_init = lon[init_i]
     init_i = init_i[lon_init >= lon_west]
     lon_init = lon_init[lon_init >= lon_west]
     init_i = init_i[lon_init <= lon_east]
     #lat_init = lat_center[init_i]
-    
+
     return data_mean, init_i, cont_i, lat_center
 
 def remove_nearby(data_list, data_values, arb_thresh, lon_thresh, data_res):
     '''Using an extrema threshold is likely to result in duplicate data points nearby each other. In this
     function, we will test if subsequent maxima points are within a certain distance of one another. Everytime they are not,
-    the "counter" will reset and a new list will be generated. Once there is a list of points and the chain is broken, two 
+    the "counter" will reset and a new list will be generated. Once there is a list of points and the chain is broken, two
     things will happen:
         - Will find the maximum value, and any points arb_thresh or greater less than it is automatically removed
         - For all remaining points, a centroid is calculated and a final point is output'''
@@ -499,19 +498,19 @@ def remove_nearby(data_list, data_values, arb_thresh, lon_thresh, data_res):
     #print(grid_thresh)
 
     for i in range(len(data_list)):
-        if (i == 0): #If first element 
+        if (i == 0): #If first element
             continue #Skip this loop
         if (data_list[i] - data_list[i-1]) <= grid_thresh: #If closer together than supposed to be
             counter.append(data_list[i-1]) #Append previous point
             counter.append(data_list[i]) #Append current point
-            
+
             #Do same for counter_data points
             counter_data.append(data_values[i-1])
             counter_data.append(data_values[i])
-            
+
             rm_list.append(data_list[i-1])
             rm_list.append(data_list[i])
-        
+
         elif len(counter) ==0: #If counter doesn't have anything, go ahead and continue to next loop
             continue
 
@@ -520,7 +519,7 @@ def remove_nearby(data_list, data_values, arb_thresh, lon_thresh, data_res):
             cond = (count_max - counter_data)
             counter = np.array(counter)
             counter_data = np.array(counter_data)
-            
+
             counter = counter[cond < arb_thresh] #Only keep things wihtin arb_thresh of the max
             counter_data = counter_data[cond < arb_thresh] #Do same for actual values
 
@@ -550,11 +549,11 @@ def remove_nearby(data_list, data_values, arb_thresh, lon_thresh, data_res):
                 adj_point.append(weighted_i)
                 counter = []
                 counter_data = []
-        
 
-        
+
+
     return adj_point, rm_list
-            
+
 def execute_cleanup1(cont_max, init_max, data_mean, arb_thresh, lon_thresh, data_res):
     '''This just executes the remove_nearby script and cleans up output to generate the initial list of lon points.'''
     #adj_cont, rm_cont = remove_nearby(cont_max, data_mean[cont_max], arb_thresh, lon_thresh, data_res)
@@ -584,8 +583,8 @@ def execute_cleanup1(cont_max, init_max, data_mean, arb_thresh, lon_thresh, data
 #     new_cont = []
     new_init = []
 
-#     [new_cont.append(x) for x in final_max_cont if x not in new_cont] 
-    [new_init.append(x) for x in final_max_init if x not in new_init] 
+#     [new_cont.append(x) for x in final_max_cont if x not in new_cont]
+    [new_init.append(x) for x in final_max_init if x not in new_init]
 
 #     final_max_cont = new_cont
     final_max_init = new_init
@@ -626,8 +625,8 @@ def execute_cleanup2(final_max_cont, final_max_init, data_mean, wide_thresh, dat
     return lon_init, lon_cont, new_final_cont, new_final_init
 
 def within_distance_direct(lon, lat, lon_in,lat_in, lon_old, lat_old, step, forward_weight = True, forward_scale = 1/5):
-    '''Right now, we want centers to be within a distance of the time step. 
-    
+    '''Right now, we want centers to be within a distance of the time step.
+
     Forward bias prevents extreme cases of "back_building" by limiting back_lon search to half the forward distance.'''
     if lon_in <= lon_old: #IF true, then the wave is moving the correct direction
         fwd = True
@@ -637,7 +636,7 @@ def within_distance_direct(lon, lat, lon_in,lat_in, lon_old, lat_old, step, forw
     #print(distance)
     if distance <= step:
         return True, distance, fwd
-    else: 
+    else:
         return False, distance, fwd
 # lon1 = lon[25]
 # lon2 = lon[25]
@@ -651,7 +650,7 @@ def within_distance_direct(lon, lat, lon_in,lat_in, lon_old, lat_old, step, forw
 #print(within_distance_direct(lon, lat, lon1, lat1, lon2, lat2, 300))
 #win_3, win_6 = within_distance(-100, -98, 300, 600, 1)
 #print(win_3, win_6)
-        
+
 def nan_helper(y):
     """Helper to handle indices and logical indices of NaNs. CREDIT TO: user "eat" on StackOverflow
 
@@ -689,7 +688,7 @@ def cleanup_AEW(AEW_lon_in, AEW_lat_in, temporal_res, days_remove):
 
         nans, x = nan_helper(AEW_lat_slc)
         AEW_lat_slc[nans]= np.interp(x(nans), x(~nans), AEW_lat_slc[~nans])
-        
+
         AEW_lon_in[row,:] = AEW_lon_slc
         AEW_lat_in[row,:] = AEW_lat_slc
 
@@ -698,7 +697,7 @@ def cleanup_AEW(AEW_lon_in, AEW_lat_in, temporal_res, days_remove):
         AEW_lon_in[row, (last+1):] = np.NaN
         AEW_lat_in[row, 0:first] = np.NaN
         AEW_lat_in[row, (last+1):] = np.NaN
-        
+
         #Remove any track that has less than 48 hours worth of data
         data_len = len(AEW_lon_slc[~np.isnan(AEW_lon_slc)])
         #print(data_len)
@@ -706,11 +705,11 @@ def cleanup_AEW(AEW_lon_in, AEW_lat_in, temporal_res, days_remove):
             del_list.append(row)
     AEW_lon_in = np.delete(AEW_lon_in, del_list, axis = 0)
     AEW_lat_in = np.delete(AEW_lat_in, del_list, axis = 0)
-        
+
 
     return AEW_lon_in, AEW_lat_in
 
-def extend_AEW(data_stuff, smooth_len): 
+def extend_AEW(data_stuff, smooth_len):
     #Test to make sure that we can add 13 points... otherwise, add other points
     data_in = data_stuff.copy()
     real_val = np.argwhere(~np.isnan(data_in))
@@ -735,7 +734,7 @@ def extend_AEW(data_stuff, smooth_len):
     x1 = np.arange(len(data_1)).reshape(-1,1)
     x1_new = (np.arange(append_len) - append_len)
     x1_new = x1_new.reshape(-1,1)
-    
+
     model1 = LinearRegression().fit(x1,data_1)
     reg_1 = model1.predict(x1_new)
 
@@ -745,10 +744,10 @@ def extend_AEW(data_stuff, smooth_len):
     x2 = np.arange(len(data_2)).reshape(-1,1)
     x2_new = (np.arange(append_len) + append_len)
     x2_new = x2_new.reshape(-1,1)
-    
+
     model2 = LinearRegression().fit(x2,data_2)
     reg_2 = model2.predict(x2_new)
-    
+
     #Finally, want to append the data before and after)
     #AEw_lon_in[first-]
     data_in = data_in.reshape(-1,1)
@@ -757,11 +756,11 @@ def extend_AEW(data_stuff, smooth_len):
     return reg_1, reg_2, data_in.reshape(1,-1)
 
 #reg1, reg2, data_in = extend_AEW(data, smooth_len)
-    
+
 def static_background(zoom = False, wider = False):
     #PROJECTION SETTINGS
     dataproj = ccrs.PlateCarree()
-    
+
     #Define the extent of our static atlantic plot
     if zoom == True:
         lon1 = -70
@@ -778,10 +777,10 @@ def static_background(zoom = False, wider = False):
         lon2 = 0
         lat1 = 0
         lat2 = 40
-    
+
     lon_delta = (lon2-lon1)/5
     lat_delta = (lat2-lat1)/5
-    
+
     #Actually plot this
     fig=plt.figure(figsize=(15, 5))
     ax=plt.subplot(111, projection=dataproj)
@@ -789,7 +788,7 @@ def static_background(zoom = False, wider = False):
     ax.coastlines('50m', linewidth=1.5)
     ax.add_feature(cfeature.STATES, linewidth=1.0)
     ax.add_feature(cfeature.BORDERS, linewidth=1.0)
-    gl = ax.gridlines(color='gray',alpha=0.5,draw_labels=True) 
+    gl = ax.gridlines(color='gray',alpha=0.5,draw_labels=True)
     gl.xlabels_top, gl.ylabels_right = False, False
     gl.xlabel_style, gl.ylabel_style = {'fontsize': 16}, {'fontsize': 16}
     gl.xlocator = mticker.FixedLocator([lon1,lon1+lon_delta, lon1+2*lon_delta, lon1+3*lon_delta, lon1+4*lon_delta, lon1+5*lon_delta])
@@ -827,7 +826,7 @@ def AEW_duplicate(lon_data, num_cutoff, close_cutoff, perc):
                     beg_old = beg_old[~np.isnan(beg_old)]
                     prior_num_new = len(beg_new[~np.isnan(beg_new)])
                     prior_num_old = len(beg_old[~np.isnan(beg_old)])
-                    
+
                     # NEW EDITED SECTION.... TEST OUT
                     if prior_num_new != 0 and prior_num_old != 0:
                         if prior_num_new<=prior_num_old and (np.abs(beg_new[-1] - beg_new[0])<=5): #If the "new" data is greater or equal to 20, continue
@@ -841,7 +840,7 @@ def AEW_duplicate(lon_data, num_cutoff, close_cutoff, perc):
 # -----------------------------------------------------------------------------
 ##### END OF IMPORT STATEMENTS AND FUNCTIONS #####
 
-##### MAIN CODE STARTS HERE ##### 
+##### MAIN CODE STARTS HERE #####
 # -----------------------------------------------------------------------------
 
 if len(sys.argv) == 1: #Basically, no inputs
@@ -863,7 +862,7 @@ time_units = nc_file.variables['time'].units
 nclat = nc_file.variables['latitude'][:]
 nclon = nc_file.variables['longitude'][:]
 
-#Find, slice out only the area we are interested in (to reduce file size 
+#Find, slice out only the area we are interested in (to reduce file size
 #and prevent memory overuse/dumps!)
 # lon_st, n = find_nearest(nclon, -65)
 # lon_end, n = find_nearest(nclon, 60)
@@ -952,7 +951,7 @@ for slc_num in range(len(time)):
             lati_append, n = find_nearest(lat, lat_center[idx])
             lat_first_guess.append(lati_append)
 
-        # ------ Now, run centroid weighting to get the final list of cent_lat and cent_lons -----------                                    
+        # ------ Now, run centroid weighting to get the final list of cent_lat and cent_lons -----------
         cent_lat = []
         cent_lon = []
 
@@ -974,12 +973,12 @@ for slc_num in range(len(time)):
                 AEW_lat[row, slc_num] = cent_lat[row]
                 AEW_time[row, slc_num] = time[slc_num]
                 print(AEW_lon)
-    else: 
+    else:
         # IF WE ALREADY CREATED THE ARRAY... GOOD! But now we have to deal with a few other things
         #First, we need to get the new initation points. However, we only declare a new AEW if
         #the detected wave is NOT within a certain radius of a previous point!
 
-        ##### EXTRAPOLATION SECTION: add in Alan Brammer's suggested extrapolation metric 
+        ##### EXTRAPOLATION SECTION: add in Alan Brammer's suggested extrapolation metric
 
         data_mean, init_max, cont_max, lat_center = find_maxima(curv_vort_data, lon, lat, lon_west, lon_east, thres_init, thres_cont, separate_bands = banding_t)
         mean_array[slc_num,:] = data_mean[:]
@@ -1007,7 +1006,7 @@ for slc_num in range(len(time)):
 
                         data_lon = AEW_lon_slc[~np.isnan(AEW_lon_slc)][-extra_it::].reshape(-1,1)
                         x = np.arange(len(data_lon)).reshape(-1,1)
-                        x_new = np.array([len(data_lon)]) 
+                        x_new = np.array([len(data_lon)])
                         x_new = x_new.reshape(-1,1)
 
                         model = LinearRegression().fit(x,data_lon)
@@ -1053,9 +1052,9 @@ for slc_num in range(len(time)):
 
                         if win3_extra == True and curv_extra >=extrapolate_thresh:
                             if EXTRAPOLATE_FORWARD == True:
-                                backward_dist = haversine(lon_extra_out, lat_extra_out, AEW_lon[existing, (slc_num-1)], lat_extra_out) 
+                                backward_dist = haversine(lon_extra_out, lat_extra_out, AEW_lon[existing, (slc_num-1)], lat_extra_out)
                                 curv_lon_extra,n = find_nearest(lon, AEW_lon[existing, slc_num-1])
-                                curv_lat_extra,n = find_nearest(lat, AEW_lat[existing, slc_num-1]) 
+                                curv_lat_extra,n = find_nearest(lat, AEW_lat[existing, slc_num-1])
                                 curv_val_extra = curv_vort_data[curv_lat_extra, curv_lon_extra]
                                 if lon_extra_out>= AEW_lon[existing, (slc_num-1)] and backward_dist >= extra_backcut and AEW_lat[existing, (slc_num-1)]<=extra_lat_start and curv_val_extra< speed_curv_thresh:
                                     continue
@@ -1070,7 +1069,7 @@ for slc_num in range(len(time)):
 
                         data_lon = AEW_lon_slc[~np.isnan(AEW_lon_slc)][-(extra_it+1)::].reshape(-1,1)
                         x = np.arange(len(data_lon)).reshape(-1,1)
-                        x_new = np.array([len(data_lon)]) 
+                        x_new = np.array([len(data_lon)])
                         x_new = x_new.reshape(-1,1)
 
                         model = LinearRegression().fit(x,data_lon)
@@ -1131,7 +1130,7 @@ for slc_num in range(len(time)):
 
                         data_lon = AEW_lon_slc[~np.isnan(AEW_lon_slc)][-(extra_it+1)::].reshape(-1,1)
                         x = np.arange(len(data_lon)).reshape(-1,1)
-                        x_new = np.array([len(data_lon)]) 
+                        x_new = np.array([len(data_lon)])
                         x_new = x_new.reshape(-1,1)
 
                         model = LinearRegression().fit(x,data_lon)
@@ -1208,7 +1207,7 @@ for slc_num in range(len(time)):
             lati_append, n = find_nearest(lat, lat_center[idx])
             lat_first_guess.append(lati_append)
 
-        # ------ Now, run centroid testing to get the final list of cent_lat and cent_lons -----------                                    
+        # ------ Now, run centroid testing to get the final list of cent_lat and cent_lons -----------
         cent_lat = []
         cent_lon = []
         for i in range(len(lat_first_guess)): #Iterate over the total # of initial points we have
@@ -1220,7 +1219,7 @@ for slc_num in range(len(time)):
 
         # ----- DISTANCE TESTING FOR INITATED POINTS -----
         #NOW DO WE ADD THESE NEW POINTS TO THE LIST? DEPENDS ON IF THEY ARE WITHIN A RADIUS OF THE POINTS IN QUESTION
-        for init_point in range(len(cent_lon)): #For each potential initation point  
+        for init_point in range(len(cent_lon)): #For each potential initation point
             win3_list = []
             win6_list = []
             for existing in range(np.shape(AEW_lon)[0]): #Check with each existing AEW track to see if it is within a distance of them
@@ -1254,7 +1253,7 @@ for slc_num in range(len(time)):
         for idx in new_cont_out:
             lati_append, n = find_nearest(lat, lat_center[idx])
             lat_first_guess_cont.append(lati_append)
-        for i in range(len(new_cont_out)): 
+        for i in range(len(new_cont_out)):
             loni = new_cont_out[i]
             lati = lat_first_guess_cont[i]
 
@@ -1268,13 +1267,13 @@ for slc_num in range(len(time)):
                 lon_point_array.append(lon_new_pt)
 
 
-            except: 
+            except:
                 print('Exception -- something major went wrong and not sure why.')
                 continue
 
 
     #NOW DO WE ADD THESE NEW POINTS TO THE LIST? DEPENDS ON IF THEY ARE WITHIN A RADIUS OF THE POINTS IN QUESTION
-        for existing in range(np.shape(AEW_lon)[0]): #Check with each 
+        for existing in range(np.shape(AEW_lon)[0]): #Check with each
             if ~final_merge_list.any(): #Check to make sure we are not working with a merged wave
                 pass
             elif existing in final_merge_list[:,1]:
@@ -1293,7 +1292,7 @@ for slc_num in range(len(time)):
                 temp_lon_arr6 = []
                 temp_lat_arr6 = []
 
-                for cont_i in range(len(lon_point_array)): #For each potential initation point 
+                for cont_i in range(len(lon_point_array)): #For each potential initation point
                     temp_bool3, temp_dist3, fwd3 = within_distance_direct(lon, lat, lon_point_array[cont_i], lat_point_array[cont_i],
                                                                  AEW_lon[existing, (slc_num-1)], AEW_lat[existing, (slc_num-1)],
                                                                    step_3hr)
@@ -1303,7 +1302,7 @@ for slc_num in range(len(time)):
 
 
 
-                    if temp_bool3 == True: #If it is within the specified range 
+                    if temp_bool3 == True: #If it is within the specified range
                         temp_dist_list3.append(temp_dist3)
                         temp_fwd_list3.append(fwd3)
                         temp_lon_arr3.append(lon_point_array[cont_i])
@@ -1316,25 +1315,25 @@ for slc_num in range(len(time)):
 
 
                 #Now we have a list of points that satisfy the distance requirements for this given AEW. What now?
-                #We determine the point the closest to the AEW from one timestep ago. If they don't exist, we try the same for 
+                #We determine the point the closest to the AEW from one timestep ago. If they don't exist, we try the same for
                 #6 hourly.
 
                 #Caveat -- we don't necessarily prevent points from being fixed to two waves. Will see how this performs and
-                #will adjust accordingly. Could be okay to identify wave mergers. 
+                #will adjust accordingly. Could be okay to identify wave mergers.
                 temp_dist_list3 = np.array(temp_dist_list3)
                 temp_fwd_list3 = np.array(temp_fwd_list3)
                 temp_lat_list3 = np.array(temp_lat_arr3)
                 temp_lon_list3 = np.array(temp_lon_arr3)
 
                 if any(temp_dist_list3): #If there are any in the 1 timestep list
-                    min_i = np.argmin(temp_dist_list3)   
+                    min_i = np.argmin(temp_dist_list3)
                     #Test to see if latitudinal jump occurs
                     if np.abs(temp_lat_arr3[min_i]-AEW_lat[existing, (slc_num-1)])>= land_lat_limit:
                         continue
 
                     #Get some curvature value characteristics for later
                     curv_lon_back,n = find_nearest(lon, temp_lon_list3[min_i])
-                    curv_lat_back,n = find_nearest(lat, temp_lat_list3[min_i]) 
+                    curv_lat_back,n = find_nearest(lat, temp_lat_list3[min_i])
 
                     curv_val_back = curv_vort_data[curv_lat_back, curv_lon_back]
 
@@ -1358,13 +1357,13 @@ for slc_num in range(len(time)):
                         back_cutoff = back_cutoff_land
                         back_cutoff_long = back_cutoff_long_land
                     fwd = temp_fwd_list3[min_i]
-                    if force_forward == True: 
+                    if force_forward == True:
                         if fwd == False:
                             if AEW_lon[existing, (slc_num-1)] != AEW_lon[existing, (slc_num-stuck_thresh)] or cut_stuck == False:
                                 if temp_dist_list3[min_i]<= back_cutoff:
                                     AEW_lon[existing, slc_num] = AEW_lon[existing, (slc_num-1)]
                                     AEW_lat[existing, slc_num] = temp_lat_arr3[min_i]
-                        else:   
+                        else:
                             if temp_lon_arr3[min_i] == AEW_lon[existing, (slc_num-stuck_thresh)]: #NEW, TEST FOR STUCK THRESH
                                 continue
                             AEW_lon[existing, slc_num] = temp_lon_arr3[min_i]
@@ -1391,12 +1390,12 @@ for slc_num in range(len(time)):
                                 if temp_dist_list6[min_i]<= back_cutoff_long and long_edit==True:
                                     AEW_lon[existing, slc_num] = AEW_lon[existing, (slc_num-2)]
                                     AEW_lat[existing, slc_num] = temp_lat_arr6[min_i]
-                        else:                    
+                        else:
                             AEW_lon[existing, slc_num] = temp_lon_arr6[min_i]
                             AEW_lat[existing, slc_num] = temp_lat_arr6[min_i]
                     else:
                         AEW_lon[existing, slc_num] = temp_lon_arr6[min_i]
-                        AEW_lat[existing, slc_num] = temp_lat_arr6[min_i]     
+                        AEW_lat[existing, slc_num] = temp_lat_arr6[min_i]
     if merge_wave == True:
          for existing in range(np.shape(AEW_lon)[0]): #First iterate over all the waves
                     AEW_lon_slc = AEW_lon[existing,:]
@@ -1417,9 +1416,9 @@ for slc_num in range(len(time)):
 
                         two_wave_distance = haversine(lon1, lat1, lon2, lat2)
                         new_wave_data = new_AEW_lon_slc[~np.isnan(new_AEW_lon_slc)]
-                        try: 
+                        try:
                             new_wave_lon = np.abs(new_wave_data[-1] - new_wave_data[0])
-                        except: 
+                        except:
                             new_wave_lon = 0
 
                         if len(new_AEW_lon_slc[~np.isnan(new_AEW_lon_slc)]) <= extrapolate_time and two_wave_distance<merge_distance and new_wave_lon<10:
@@ -1442,9 +1441,9 @@ for slc_num in range(len(time)):
                             else:
                                 temp_merge = [new_existing, existing]
                                 AEW_lon[existing, slc_num] = AEW_lon[new_existing, slc_num]
-                                AEW_lat[existing, slc_num] = AEW_lat[new_existing, slc_num]           
+                                AEW_lat[existing, slc_num] = AEW_lat[new_existing, slc_num]
 
-                            #Finally, concatinate 
+                            #Finally, concatinate
                             if not final_merge_list.any():
                                 final_merge_list = np.array(temp_merge).reshape(1,2)
                             else:
@@ -1459,7 +1458,7 @@ for slc_num in range(len(time)):
                         continue
 
                     curv_lon,n = find_nearest(lon, AEW_lon_slc[slc_num])
-                    curv_lat,n = find_nearest(lat, AEW_lat_slc[slc_num]) 
+                    curv_lat,n = find_nearest(lat, AEW_lat_slc[slc_num])
 
                     curv_val = curv_vort_data[curv_lat, curv_lon]
 
@@ -1467,7 +1466,7 @@ for slc_num in range(len(time)):
                         AEW_lon[existing, slc_num] = np.NaN
                         AEW_lat[existing, slc_num] = np.NaN
                         AEW_lon[existing, (slc_num-1)] = np.NaN
-                        AEW_lat[existing, (slc_num-1)] = np.NaN                                
+                        AEW_lat[existing, (slc_num-1)] = np.NaN
 
 # --------------------------------------------------------------------------
 #END OF MAIN ITREATION LOOP
@@ -1490,7 +1489,7 @@ AEW_lon = new_AEW_lon
 reg_list = [num2date(i, time_units, only_use_cftime_datetimes = False) for i in time]
 data_slc = 2
 
-if duplicate_removal == True: 
+if duplicate_removal == True:
     rm_dup_list, merge_list = AEW_duplicate(AEW_lon,1, 1, 0.7)
 
     AEW_lon= np.delete(AEW_lon, rm_dup_list, axis = 0)
@@ -1588,7 +1587,7 @@ if save_data == True:
 
     curv_data_mean = ncout.createVariable('curv_data_mean', np.dtype('float64').char, ('time','longitude'))
     curv_data_mean.long_name = 'Averaged Non-Divergent Curvature Vorticity (5-20N)'
-    curv_data_mean.units = 's**-1' 
+    curv_data_mean.units = 's**-1'
 
     # copy axis from original dataset
     time_data[:] = time[:]
@@ -1604,5 +1603,3 @@ if save_data == True:
 
 # -------------------------------------------------------------------------
 # END DATA SAVE
-
-    

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on Mon Aug 31 09:23:42 2020
 
@@ -18,10 +17,10 @@ class season:
         for i in range(len(self.AEW_group)):
             TC_ans = self.AEW_group[i].connected_TC
             if TC_ans == True:
-                waves_TC.append((i+1))
+                waves_TC.append(i+1)
         return waves_TC
-            
-        
+
+
 class AEW:
     def __init__(self, year, number, time, lon, lat, smooth_lon, smooth_lat, strength, over_africa, connected_TC, connected_TC_name = 'N/A', genesis_time = 'N/A'):
         self.year = year
@@ -36,12 +35,12 @@ class AEW:
         self.TC_genesis_time = genesis_time
         self.smooth_lon = smooth_lon
         self.smooth_lat = smooth_lat
-        
+
     def get_data(self):
         return self.time, self.lon, self.lat
-    
+
 class AEW_CCKW:
-    def __init__(self, year, number, time, lon, lat, smooth_lon, smooth_lat, 
+    def __init__(self, year, number, time, lon, lat, smooth_lon, smooth_lat,
                  strength, over_africa, connected_TC, TB_lat_range, VP_lat_range,
                  CCKW_TB, CCKW_VP, sig_TB_peak, sig_VP_peak, sig_TB_valley, sig_VP_valley,
                  connected_TC_name = 'N/A', genesis_time = 'N/A'):
@@ -57,7 +56,7 @@ class AEW_CCKW:
         self.TC_genesis_time = genesis_time
         self.smooth_lon = smooth_lon
         self.smooth_lat = smooth_lat
-        
+
         #Also include the new stuff we wnat
         self.CCKW_TB = CCKW_TB
         self.CCKW_VP = CCKW_VP
