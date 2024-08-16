@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-AEW Postprocessing Script: Takes the computed AEW tracks and cleans them up. This includes combining duplicate tracks, removing short tracks, and connecting broken tracks. 
+AEW Postprocessing Script: Takes the computed AEW tracks and cleans them up. This includes combining duplicate tracks, removing short tracks, and connecting broken tracks.
 """
 
 import numpy as np
@@ -30,7 +30,7 @@ connect_distance = 700 #km #Distance potentially "broken" waves can be connected
 connect_distance_back = 200 #km #Same, but for waves that are near stationary or move in the wrong direction
 connect_step = 2 #km
 
-##### -- POSTPROCESSING SETTINGS -- ##### 
+##### -- POSTPROCESSING SETTINGS -- #####
 #### IMPORTANT: MINIMUM LENGTH OF TRACK! ####
 # This is the minimum number of days that will be kept as a AEW.
 days_remove = 2 #Default: 2 (days)
@@ -51,16 +51,16 @@ def find_nearest(array, value):
 def haversine(lon1, lat1, lon2, lat2):
     from math import radians, cos, sin, asin, sqrt
     """
-    Calculate the great circle distance between two points 
+    Calculate the great circle distance between two points
     on the earth (specified in decimal degrees)
     """
-    # convert decimal degrees to radians 
+    # convert decimal degrees to radians
     lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
-    # haversine formula 
-    dlon = lon2 - lon1 
-    dlat = lat2 - lat1 
+    # haversine formula
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
     a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-    c = 2 * asin(sqrt(a)) 
+    c = 2 * asin(sqrt(a))
     # Radius of earth in kilometers is 6371
     km = 6371* c
     return km
@@ -106,7 +106,7 @@ def AEW_duplicate(lon_data, num_cutoff, close_cutoff, perc):
                     beg_old = beg_old[~np.isnan(beg_old)]
                     prior_num_new = len(beg_new[~np.isnan(beg_new)])
                     prior_num_old = len(beg_old[~np.isnan(beg_old)])
-                    
+
                     # NEW EDITED SECTION.... TEST OUT
                     if prior_num_new != 0 and prior_num_old != 0:
                         if prior_num_new<=prior_num_old and (np.abs(beg_new[-1] - beg_new[0])<=5): #If the "new" data is greater or equal to 20, continue
@@ -117,7 +117,7 @@ def AEW_duplicate(lon_data, num_cutoff, close_cutoff, perc):
                             rm_list.append(row)
 
     return rm_list, merge_list
-        
+
 class AEW:
     def __init__(self, year, number, time, lon, lat, smooth_lon, smooth_lat, strength, over_africa, connected_TC, connected_TC_name = 'N/A', genesis_time = 'N/A'):
         self.year = year
@@ -133,7 +133,7 @@ class AEW:
         self.smooth_lon = smooth_lon
         self.smooth_lat = smooth_lat
         #self.strength = strength
-        
+
     def get_data(self):
         return self.time, self.lon, self.lat
 
@@ -202,9 +202,9 @@ for existing in range(np.shape(AEW_lon)[0]): #First iterate over all the waves
                     elif old_wave_last>= new_wave_last:
                         temp_merge = [new_existing, existing]
                         AEW_lon[existing, slc_num:] = AEW_lon[new_existing, slc_num:]
-                        AEW_lat[existing, slc_num:] = AEW_lat[new_existing, slc_num:]           
+                        AEW_lat[existing, slc_num:] = AEW_lat[new_existing, slc_num:]
 
-                    #Finally, concatinate 
+                    #Finally, concatinate
                     if not final_merge_list.any():
                         final_merge_list = np.array(temp_merge).reshape(1,2)
                     else:
@@ -238,7 +238,7 @@ for existing in range(np.shape(AEW_lon)[0]): #First iterate over all the waves
 
                 if first_pos <= 0+tm_step or new_last_pos!=(first_pos-1-tm_step): #If out of range, or if the timestep in question is not a wave's first or last position
                     pass
-                elif lon_first>=-17 and tm_step>connect_step: #If over land, we only want to check 18 hours 
+                elif lon_first>=-17 and tm_step>connect_step: #If over land, we only want to check 18 hours
                     pass
                 else:
                     new_lon_last = new_AEW_lon_slc[first_pos-1-tm_step]
@@ -252,7 +252,7 @@ for existing in range(np.shape(AEW_lon)[0]): #First iterate over all the waves
                             final_reconnect_list = np.array(temp_arr).reshape(1,2)
                         else:
                             final_reconnect_list = np.vstack((final_reconnect_list, temp_arr))
-                    #WHOLE NEW BLOCK, ADDED LOGISTICS 
+                    #WHOLE NEW BLOCK, ADDED LOGISTICS
                     elif test_distance1<=connect_distance_back and lon_first>new_lon_last: #Same but for "backwards" wave
                         #print('BOOM!')
                         temp_arr = [existing, new_existing]
@@ -264,7 +264,7 @@ for existing in range(np.shape(AEW_lon)[0]): #First iterate over all the waves
 
                 if last_pos >= (np.shape(AEW_lon)[1]-1-tm_step) or new_first_pos!=(last_pos+1+tm_step): #If out of range, or if the timestep in question is not a wave's first or last position
                     pass
-                elif lon_last>=-17 and tm_step>connect_step: #If over land, we only want to check 18 hours 
+                elif lon_last>=-17 and tm_step>connect_step: #If over land, we only want to check 18 hours
                     pass
                 else:
                     new_lon_first = new_AEW_lon_slc[last_pos+1+tm_step]
@@ -276,7 +276,7 @@ for existing in range(np.shape(AEW_lon)[0]): #First iterate over all the waves
                         #print('BOOM!')
                         temp_arr = [existing, new_existing]
                         #print(existing, new_existing)
-                        #Finally, concatinate 
+                        #Finally, concatinate
                         if not final_reconnect_list.any():
                             final_reconnect_list = np.array(temp_arr).reshape(1,2)
                         else:
@@ -286,7 +286,7 @@ for existing in range(np.shape(AEW_lon)[0]): #First iterate over all the waves
                         #print('BOOM!')
                         temp_arr = [existing, new_existing]
                         #print(existing, new_existing)
-                        #Finally, concatinate 
+                        #Finally, concatinate
                         if not final_reconnect_list.any():
                             final_reconnect_list = np.array(temp_arr).reshape(1,2)
                         else:
@@ -367,7 +367,7 @@ new_AEW_lat = np.delete(new_AEW_lat, connect_del_list, axis = 0)
 AEW_lat = new_AEW_lat
 AEW_lon = new_AEW_lon
 
-if duplicate_removal == True: 
+if duplicate_removal == True:
     rm_dup_list, merge_list = AEW_duplicate(AEW_lon,1, 1, 0.7)
 
     AEW_lon= np.delete(AEW_lon, rm_dup_list, axis = 0)
@@ -420,7 +420,7 @@ if pair_with_TC == True:
                     continue
                 else:
                     pass
-TC_wave_frame = np.array([linked_TC_name, linked_TC_wave])   
+TC_wave_frame = np.array([linked_TC_name, linked_TC_wave])
 
 ## Find strength
 curvdata = 'CURV_VORT/RADIAL_AVG/radial_avg_curv_vort.nc'
@@ -443,7 +443,7 @@ for tm_i in range(np.shape(AEW_lon)[1]):
         lon_out = AEW_lon[storm, tm_i]
         lat_out = AEW_lat[storm, tm_i]
         if ~np.isnan(lon_out) and ~np.isnan(lat_out):
-            lon_i,n = find_nearest(lon, lon_out) 
+            lon_i,n = find_nearest(lon, lon_out)
             lat_i,n = find_nearest(lat, lat_out)
             curv_value = curv_vort_slice[lat_i, lon_i]
 
@@ -484,7 +484,7 @@ for slc_num in range(np.shape(AEW_lon)[0]):
     time_in = reg_list_edit[:][~np.isnan(AEW_lon[slc_num, :])]
     strength_in = AEW_strength[slc_num,:][~np.isnan(AEW_lon[slc_num, :])]
 
-    AEW_object = AEW(year_in,slc_num+1,time_in, lon_in, lat_in, smooth_lon_in, smooth_lat_in, strength_in, over_africa, connected_TC, TC_connect_name, TC_genesis_time)  
+    AEW_object = AEW(year_in,slc_num+1,time_in, lon_in, lat_in, smooth_lon_in, smooth_lat_in, strength_in, over_africa, connected_TC, TC_connect_name, TC_genesis_time)
     AEW_final_list.append(AEW_object)
 
 season_object = season(int(year_used), AEW_final_list)
@@ -502,10 +502,10 @@ for row in range(np.shape(AEW_lon)[0]):
     AEW_lat_st = AEW_lat_i[0][0]
     AEW_lat_end = AEW_lat_i[-1][0]+1
     AEW_lon_filter_pull = savgol_filter(AEW_lon[row,AEW_lon_st:AEW_lon_end], smooth_len, 2, mode = 'nearest')
-    AEW_lat_filter_pull = savgol_filter(AEW_lat[row, AEW_lat_st:AEW_lat_end], smooth_len, 2, mode = 'nearest')   
+    AEW_lat_filter_pull = savgol_filter(AEW_lat[row, AEW_lat_st:AEW_lat_end], smooth_len, 2, mode = 'nearest')
     AEW_lon_filter[row,AEW_lon_st:AEW_lon_end] = AEW_lon_filter_pull
     AEW_lat_filter[row,AEW_lon_st:AEW_lon_end] = AEW_lat_filter_pull
-    
+
     ### EXTRA ATTRIBUTES TO ADD
     connected_TC = False #Hard wired, need to fix
     if np.nanmax(AEW_lon[slc_num,:])>-17:
@@ -529,7 +529,7 @@ for row in range(np.shape(AEW_lon)[0]):
         AEW_gen_time_list[row] = np.datetime64('NaT')
         AEW_name_list[row] = TC_connect_name
         #TC_genesis_time_nc = [np.NaN]
-        #TC_connect_name_nc = [np.NaN]    
+        #TC_connect_name_nc = [np.NaN]
 
 
 if save_data == True:
@@ -601,7 +601,7 @@ if save_data_nc == True: ## Also want to save the raw output as NC file for othe
     AEW_latitude_smooth = ncout.createVariable('AEW_lat_smooth', np.dtype('float64').char, ('system', 'time'))
     AEW_latitude_smooth.long_name = 'Smoothed Latitude of AEW Tracks'
     AEW_latitude_smooth.units = 'degrees'
-    
+
     AEW_strength_plot = ncout.createVariable('AEW_strength', np.dtype('float64').char, ('system', 'time'))
     AEW_strength_plot.long_name = 'AEW Strength as measured by 700hPa Curvature Vorticity'
     AEW_strength_plot.units = 's**-1'
@@ -613,7 +613,7 @@ if save_data_nc == True: ## Also want to save the raw output as NC file for othe
 
     curv_data_mean = ncout.createVariable('curv_data_mean', np.dtype('float64').char, ('time','longitude'))
     curv_data_mean.long_name = 'Averaged Non-Divergent Curvature Vorticity (5-20N)'
-    curv_data_mean.units = 's**-1' 
+    curv_data_mean.units = 's**-1'
 
     # copy axis from original dataset
     time_data[:] = time[:]

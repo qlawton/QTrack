@@ -2,15 +2,15 @@
 # coding: utf-8
 
 # # Example: Using QTrack to tracking AEWs in reanalysis data
-# 
+#
 # This example will demonstrate the basic functions of AEW tracking from the Qtrack module. In order to track AEWs, we must proceed through a few steps:
-# 
-# 1. Download or location data for tracking. Data requirments: 700hPa wind (u and v component), 6 hourly timesteps, 1 degree by 1 degree resolution. 
-# 2. `prep_data` function to prep the input data for tracking. 
+#
+# 1. Download or location data for tracking. Data requirments: 700hPa wind (u and v component), 6 hourly timesteps, 1 degree by 1 degree resolution.
+# 2. `prep_data` function to prep the input data for tracking.
 # 3. `nondivwind` (optional) if global data selected, user can run an optional divergent/non-divergent wind decomposition.
-# 4. `curvvort` Compute the curvature vorticity from the wind fields, and then take radial averages at each gridpoint to smooth it. 
-# 5. `tracking` Run the AEW tracking code. 
-# 6. `postproc` Run postprocessing on AEW data, including the creation of a netCDF4 file. 
+# 4. `curvvort` Compute the curvature vorticity from the wind fields, and then take radial averages at each gridpoint to smooth it.
+# 5. `tracking` Run the AEW tracking code.
+# 6. `postproc` Run postprocessing on AEW data, including the creation of a netCDF4 file.
 
 
 import qtrack
@@ -32,9 +32,9 @@ year_in = 2021
 # ### DOWNLOAD EXAMPLE DATA (OPTIONAL)
 qtrack.download_examples("mpas_2021092400", "")
 
-# ### Prep data 
+# ### Prep data
 
-qtrack.prep_data(data_in = "mpas_30km_run_2021092400.nc", 
+qtrack.prep_data(data_in = "mpas_30km_run_2021092400.nc",
                 data_out = prepped_data_save, cut_lev_val = 70000)
 
 # ### Non-divergent wind calculation (TO BE IMPLEMENTED LATER)

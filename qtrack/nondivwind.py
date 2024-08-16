@@ -6,7 +6,7 @@ def compute_nondiv_wind(input_file, output_file = 'wind_700_helmholtz.nc'):
     Compute non-divergent component of wind for the 700hPa level. Note that this requires a full global grid, as it utilizes spherical harmonics (windspharm: doi.org/10.5334/jors.129). Not required for tracking, and can be skipped.
 
     """
-    
+
     import numpy as np
     import matplotlib as mpl
     from netCDF4 import Dataset
@@ -26,7 +26,7 @@ def compute_nondiv_wind(input_file, output_file = 'wind_700_helmholtz.nc'):
 
     file_in = input_file
     outfile = output_file
-    
+
     SAVE_OUTPUT = True
     # ----- READ IN THE DATA -----
 
@@ -45,7 +45,7 @@ def compute_nondiv_wind(input_file, output_file = 'wind_700_helmholtz.nc'):
         tm = nc_load.variables['time'][:]
         tm_units = nc_load.variables['time'].units
 
-        
+
 
         # The standard interface requires that latitude and longitude be the leading
         # dimensions of the input wind components, and that wind components must be

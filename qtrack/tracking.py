@@ -1,7 +1,7 @@
 
-def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks_raw.nc', 
-                 initiation_bounds = [-35, 40], radius_used = 600, threshold_initial = 2e-6, threshold_continue = 1e-7, 
-                 threshold_continue_extrap = 1e-6, extrap_day_limit = 3, extrap_dist = 700, extrap_dist_carib = 500, 
+def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks_raw.nc',
+                 initiation_bounds = [-35, 40], radius_used = 600, threshold_initial = 2e-6, threshold_continue = 1e-7,
+                 threshold_continue_extrap = 1e-6, extrap_day_limit = 3, extrap_dist = 700, extrap_dist_carib = 500,
                  extrap_latitude_max = 50, extrap_latitude_min = 5, extrap_longitude_start = -20, extrap_latitude_start = 20, carib_longitude_start = -60,
                  AEW_day_remove = 2, centroid_radius = 600, spatial_res = 1, temporal_res = 6, run_animation = True, speed_limit_in = True):
     """
@@ -31,21 +31,21 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     ### USER DEFINED
     raw_ani = run_animation #True will plot "raw" centers, false will plot smoothed. (Default: True)
     speed_limit = speed_limit_in #Turn on or off forward speed limit, prevening backward motion/stalling (Default: True)
-   
+
     ### DON'T MESS WITH UNLESS NECESSARY
     run_extender = False #Turn linear extending of smooth tracks at begin/end on and off (Default: False)
     wide_ani = True #Include up to gulf with true, otherwise stick over Atlantic with false (Default: True)
     wind_overlay = True #IF ANIMATION CREATED, decide if wind vectors overlain or not (Default: True)
     duplicate_removal = False #Determines if we remove duplciate tracks here (Default: True)
     save_data = True #Turn on and off the saving of output data (netCDF4) (Default: True)
-    
+
 
     # -----------------------------------------------------
     #### BANDING (ELLESS AND TORN INSPIRED) SETTINGS ####
     # -----------------------------------------------------
     # -- Over land, the tracker uses a similar method to that of Elless and Torn (2018) to add wave points. This
     #is also used as a backup method over the ocean (ONLY EAST OF TRANSITION LONGITUDE) if extrapolation does not
-    #extend the wave, typically due to meridional shifts in wave position. 
+    #extend the wave, typically due to meridional shifts in wave position.
 
     banding_t = True # If True, will look at 6 bands (5-15, 6-16,...10-20) (default: True)
 
@@ -61,7 +61,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     #NOTE -- IGNORE 3/6 hr denotations. In reality, these refer to 1 or 2 temporal time steps backwards (for 6hr data, that would be 6hr and 12hr not 3hr and 6hr)
     step_3hr = 700 #How close new AEW point must be to existing AEW, looking at 1 timestep before (KM) (default: 700km)
     step_6hr = 1000 #Same but looking at track data for 2 timesteps before (KM) (default: 1000km)
-    bump_num = 500./step_3hr #(NOTE: NOT RELEVANT IN FINAL VERSION OF CODE) When "bumping" points (if turned on), only do so for points within this RATIO of the forward step (i.e. 5/8*800 = 500KM) 
+    bump_num = 500./step_3hr #(NOTE: NOT RELEVANT IN FINAL VERSION OF CODE) When "bumping" points (if turned on), only do so for points within this RATIO of the forward step (i.e. 5/8*800 = 500KM)
     back_cutoff_land = 100 #Only consider "backward" points within this radius of existing AEW (KM), here over land (default: 100km)
     back_cutoff_ocean = 300 #Same setting as before, but now over teh ocean (default: 300km)
     back_cutoff_long_land = 100 #"Backward" point setting but for extending waves with a missing timestep, land (default: 100km)
@@ -89,7 +89,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     # and not too weak. This is to prevent runaway track extension and to try to keep the tracker from following
     # unrelated blobs of curvature vorticity.
 
-    ##### OUTPUT 
+    ##### OUTPUT
     EXTRAPOLATE = True #Turn on or off the extrapolation entirely (Default, True)
     EXTRAPOLATE_SKIP = True #Allow extrapolation code to run again 2-3 timesteps back in case wave was only temporarily lost (Default: True)
     EXTRAPOLATE_FORWARD = True #Allow thresholds to prevent too much extrapolation in wrong direction, with parameters set below (Default: True)
@@ -118,7 +118,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     #### MASS CENTROID SETTINGS ####
     # -----------------------------------------------------
     # A curvature voticity centroid is run on local maxima before distance testing and either AEW initation or adding of points.
-    centroid_rad = centroid_radius #Radius to weight centroid 
+    centroid_rad = centroid_radius #Radius to weight centroid
     centroid_rad_extra = centroid_radius #Radius to weight extrapolation centroid
     centroid_rad_extra_60 = centroid_radius #Same as above, but west of transition longitude
     centroid_it = 0 #Number of iterations to run centroid code for banding
@@ -128,12 +128,12 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     #### CLEANUP SETTINGS ####
     # -----------------------------------------------------
 
-    cleanup = True #Turn cleanup of points on/off 
+    cleanup = True #Turn cleanup of points on/off
     upper_limit = False #old, obsolete feature. (default: False)
     cut_stuck = False# old, obsolute feature. (default: False)
     days_remove = AEW_day_remove #Number of days a AEW is required to last to be put in data
     deg_sep = 2 #Degrees of separations initiation points must be from each other.
-    arb_thresh = 0.5e-6 
+    arb_thresh = 0.5e-6
     smooth_len = 7
 
 
@@ -173,24 +173,24 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     def haversine(lon1, lat1, lon2, lat2):
         from math import radians, cos, sin, asin, sqrt
         """
-        Calculate the great circle distance between two points 
+        Calculate the great circle distance between two points
         on the earth (specified in decimal degrees)
         """
-        # convert decimal degrees to radians 
+        # convert decimal degrees to radians
         lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
-        # haversine formula 
-        dlon = lon2 - lon1 
-        dlat = lat2 - lat1 
+        # haversine formula
+        dlon = lon2 - lon1
+        dlat = lat2 - lat1
         a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-        c = 2 * asin(sqrt(a)) 
+        c = 2 * asin(sqrt(a))
         # Radius of earth in kilometers is 6371
         km = 6371* c
         return km
 
     def rad_mask(i, j, dx, dy, radius):
         '''This is a computationally efficient (at least, in python-world) way of calculating a mask of gridpoints around a
-        center point. This generates an array of points with values corresponding to the distance from some center point. 
-        Then the code masks out any values above a certain radius. 
+        center point. This generates an array of points with values corresponding to the distance from some center point.
+        Then the code masks out any values above a certain radius.
 
         This uses the assumption of a spherical Earth, not accounting for the equatorial "bulge" in real life.'''
         start = tm.time()
@@ -208,8 +208,8 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
         # Before doing this, we recognize something -- there is a max radius in the x and y direction that will
         # be computed. To save on computational time, we need to slice out the extraneous points that we already
         # know from this NOT to be in the circle. How? We know the absolute highest distance between gridspaces
-        # will be the maximum value of latitude on the elliptical earth... ~ 111 km. So slice out roughly a 112km "box" 
-        # plus one gridbox for buffer. 
+        # will be the maximum value of latitude on the elliptical earth... ~ 111 km. So slice out roughly a 112km "box"
+        # plus one gridbox for buffer.
         i_st = (i-(buffer+1))
         i_end = (i+(buffer+1))
         j_st = (j-(buffer+1))
@@ -257,7 +257,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
             lat_met = earth_circ/360 #get the number of meters in a degree latitude (ignoring "bulge")
             lat_dist = np.gradient(lat, axis=0)*lat_met
             lon_dist = np.gradient(lon, axis=1)*np.cos(np.deg2rad(lat))*lat_met
-            return lon_dist, lat_dist 
+            return lon_dist, lat_dist
 
 
         ## FIRST ITERATION ##
@@ -271,7 +271,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
         lon_new = x_in#[lon_slice]
         lat_new = y_in#[lat_slice]
         PV_slice = PV_in#[lat_slice,lon_slice]
-        #Get the distance array for later use    
+        #Get the distance array for later use
 
         #Make a meshed grid
         LON_X, LAT_Y = np.meshgrid(lon_new, lat_new)
@@ -304,7 +304,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
         y_cent = np.nansum(lat_mask*PV_mask)/np.nansum(PV_mask)
 
         ## LOOPING THE ITERATIONS ##
-        #Now we will iterate over this it-1 times to converge on the true weighted mass. Each time, we will filter based on 
+        #Now we will iterate over this it-1 times to converge on the true weighted mass. Each time, we will filter based on
         #the previous answer's "guess/calculation" of where the PV weighted center is.
 
         if it == 0: #This means we are running to convergence
@@ -315,8 +315,8 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
                     break
                 old_x = x_cent
                 old_y = y_cent
-                x_centi, n = find_nearest(lon_new, x_cent)      
-                y_centi, n = find_nearest(lat_new, y_cent)  
+                x_centi, n = find_nearest(lon_new, x_cent)
+                y_centi, n = find_nearest(lat_new, y_cent)
 
                 try:
                     pv_filt = rad_mask(y_centi, x_centi, dx, dy, radius)
@@ -344,7 +344,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
         else:
             for step in np.arange(it-1):
                 #print(x_cent, y_cent)
-                x_centi, n = find_nearest(lon_new, x_cent)      
+                x_centi, n = find_nearest(lon_new, x_cent)
                 y_centi, n = find_nearest(lat_new, y_cent)
                 try:
                     pv_filt = rad_mask(y_centi, x_centi, dx, dy, radius)
@@ -375,7 +375,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     def find_maxima(data_in, lon, lat, lon_west, lon_east, thres_init, thres_cont, separate_bands = banding_t, exclude = True, smooth = True):
         '''This finds local maxima for a 5-20N AVERAGE VALUE AT EACH LONGITUDE POINT. Two thresholds are considered:
         -- "Init" is the threshold for initially defining a AEW, and here is ONLY defined if east of the "lon_land" value
-        -- "Cont" is the threshold for continuing the tracking/propagation of an existing AEW, and is defined everywhere.''' 
+        -- "Cont" is the threshold for continuing the tracking/propagation of an existing AEW, and is defined everywhere.'''
 
         def find_nearest(array, value): #This way, we can set the lat range from 5 to 20N
             array = np.asarray(array)
@@ -398,7 +398,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
                 test_vals = np.zeros((band_len,np.shape(data_in[lat_extra_st:lat_extra_end, :])[1]))
             else:
                 band_vals = np.zeros((band_len,np.shape(data_in[lat_extra_end:lat_extra_st, :])[1]))
-                test_vals = np.zeros((band_len,np.shape(data_in[lat_extra_end:lat_extra_st, :])[1]))    
+                test_vals = np.zeros((band_len,np.shape(data_in[lat_extra_end:lat_extra_st, :])[1]))
             for i in range(band_len): #We will have six bands
                 lat_avg_end, n = find_nearest(lat, 15+i) #We only want to average the cells in a 5-20N range
                 lat_avg_st, n = find_nearest(lat, 5+i)
@@ -461,13 +461,13 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
         init_i = init_i[lon[init_i] <40]
         init_max = init_max[lon[init_i]>-100]
         init_i = init_i[lon[init_i]>-100]
-        init_i = init_i[init_max >= thres_init] 
+        init_i = init_i[init_max >= thres_init]
 
         cont_max = cont_max[lon[cont_i] < 40]
         cont_i = cont_i[lon[cont_i] < 40]
         cont_max = cont_max[lon[cont_i] > -100]
         cont_i = cont_i[lon[cont_i] > -100]
-        cont_i = cont_i[cont_max >= thres_cont] 
+        cont_i = cont_i[cont_max >= thres_cont]
 
         #Now filter "initial" AEWs such that they have to have a longitude greater than 17W (the Africa land cutoff)
         lon_init = lon[init_i]
@@ -481,7 +481,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     def remove_nearby(data_list, data_values, arb_thresh, lon_thresh, data_res):
         '''Using an extrema threshold is likely to result in duplicate data points nearby each other. In this
         function, we will test if subsequent maxima points are within a certain distance of one another. Everytime they are not,
-        the "counter" will reset and a new list will be generated. Once there is a list of points and the chain is broken, two 
+        the "counter" will reset and a new list will be generated. Once there is a list of points and the chain is broken, two
         things will happen:
             - Will find the maximum value, and any points arb_thresh or greater less than it is automatically removed
             - For all remaining points, a centroid is calculated and a final point is output'''
@@ -493,7 +493,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
         #print(grid_thresh)
 
         for i in range(len(data_list)):
-            if (i == 0): #If first element 
+            if (i == 0): #If first element
                 continue #Skip this loop
             if (data_list[i] - data_list[i-1]) <= grid_thresh: #If closer together than supposed to be
                 counter.append(data_list[i-1]) #Append previous point
@@ -578,15 +578,15 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     #     new_cont = []
         new_init = []
 
-    #     [new_cont.append(x) for x in final_max_cont if x not in new_cont] 
-        [new_init.append(x) for x in final_max_init if x not in new_init] 
+    #     [new_cont.append(x) for x in final_max_cont if x not in new_cont]
+        [new_init.append(x) for x in final_max_init if x not in new_init]
 
     #     final_max_cont = new_cont
         final_max_init = new_init
         return False, final_max_init
 
     def within_distance_direct(lon, lat, lon_in,lat_in, lon_old, lat_old, step, forward_weight = True, forward_scale = 1/5):
-        '''Right now, we want centers to be within a distance of the time step. 
+        '''Right now, we want centers to be within a distance of the time step.
 
         Forward bias prevents extreme cases of "back_building" by limiting back_lon search to half the forward distance.'''
         if lon_in <= lon_old: #IF true, then the wave is moving the correct direction
@@ -597,7 +597,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
         #print(distance)
         if distance <= step:
             return True, distance, fwd
-        else: 
+        else:
             return False, distance, fwd
     # lon1 = lon[25]
     # lon2 = lon[25]
@@ -670,7 +670,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
 
         return AEW_lon_in, AEW_lat_in
 
-    def extend_AEW(data_stuff, smooth_len): 
+    def extend_AEW(data_stuff, smooth_len):
         #Test to make sure that we can add 13 points... otherwise, add other points
         data_in = data_stuff.copy()
         real_val = np.argwhere(~np.isnan(data_in))
@@ -749,7 +749,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
         ax.coastlines('50m', linewidth=1.5)
         ax.add_feature(cfeature.STATES, linewidth=1.0)
         ax.add_feature(cfeature.BORDERS, linewidth=1.0)
-        gl = ax.gridlines(color='gray',alpha=0.5,draw_labels=True) 
+        gl = ax.gridlines(color='gray',alpha=0.5,draw_labels=True)
         gl.xlabels_top, gl.ylabels_right = False, False
         gl.xlabel_style, gl.ylabel_style = {'fontsize': 16}, {'fontsize': 16}
         gl.xlocator = mticker.FixedLocator([lon1,lon1+lon_delta, lon1+2*lon_delta, lon1+3*lon_delta, lon1+4*lon_delta, lon1+5*lon_delta])
@@ -801,9 +801,9 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     # -----------------------------------------------------------------------------
     ##### END OF IMPORT STATEMENTS AND FUNCTIONS #####
 
-    ##### MAIN CODE STARTS HERE ##### 
+    ##### MAIN CODE STARTS HERE #####
     # -----------------------------------------------------------------------------
-    
+
 #     if len(sys.argv) == 1: #Basically, no inputs
 #         datafile = 'CURV_VORT/RADIAL_AVG/radial_avg_curv_vort.nc'
 #         #windfile = 'wind_for_tracking.nc'
@@ -824,7 +824,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     nclat = nc_file.variables['latitude'][:]
     nclon = nc_file.variables['longitude'][:]
 
-    #Find, slice out only the area we are interested in (to reduce file size 
+    #Find, slice out only the area we are interested in (to reduce file size
     #and prevent memory overuse/dumps!)
     # lon_st, n = find_nearest(nclon, -65)
     # lon_end, n = find_nearest(nclon, 60)
@@ -913,7 +913,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
                 lati_append, n = find_nearest(lat, lat_center[idx])
                 lat_first_guess.append(lati_append)
 
-            # ------ Now, run centroid weighting to get the final list of cent_lat and cent_lons -----------                                    
+            # ------ Now, run centroid weighting to get the final list of cent_lat and cent_lons -----------
             cent_lat = []
             cent_lon = []
 
@@ -935,12 +935,12 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
                     AEW_lat[row, slc_num] = cent_lat[row]
                     AEW_time[row, slc_num] = time[slc_num]
                     #print(AEW_lon)
-        else: 
+        else:
             # IF WE ALREADY CREATED THE ARRAY... GOOD! But now we have to deal with a few other things
             #First, we need to get the new initation points. However, we only declare a new AEW if
             #the detected wave is NOT within a certain radius of a previous point!
 
-            ##### EXTRAPOLATION SECTION: add in Alan Brammer's suggested extrapolation metric 
+            ##### EXTRAPOLATION SECTION: add in Alan Brammer's suggested extrapolation metric
 
             data_mean, init_max, cont_max, lat_center = find_maxima(curv_vort_data, lon, lat, lon_west, lon_east, thres_init, thres_cont, separate_bands = banding_t)
             mean_array[slc_num,:] = data_mean[:]
@@ -968,7 +968,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
 
                             data_lon = AEW_lon_slc[~np.isnan(AEW_lon_slc)][-extra_it::].reshape(-1,1)
                             x = np.arange(len(data_lon)).reshape(-1,1)
-                            x_new = np.array([len(data_lon)]) 
+                            x_new = np.array([len(data_lon)])
                             x_new = x_new.reshape(-1,1)
 
                             model = LinearRegression().fit(x,data_lon)
@@ -1014,9 +1014,9 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
 
                             if win3_extra == True and curv_extra >=extrapolate_thresh:
                                 if EXTRAPOLATE_FORWARD == True:
-                                    backward_dist = haversine(lon_extra_out, lat_extra_out, AEW_lon[existing, (slc_num-1)], lat_extra_out) 
+                                    backward_dist = haversine(lon_extra_out, lat_extra_out, AEW_lon[existing, (slc_num-1)], lat_extra_out)
                                     curv_lon_extra,n = find_nearest(lon, AEW_lon[existing, slc_num-1])
-                                    curv_lat_extra,n = find_nearest(lat, AEW_lat[existing, slc_num-1]) 
+                                    curv_lat_extra,n = find_nearest(lat, AEW_lat[existing, slc_num-1])
                                     curv_val_extra = curv_vort_data[curv_lat_extra, curv_lon_extra]
                                     if lon_extra_out>= AEW_lon[existing, (slc_num-1)] and backward_dist >= extra_backcut and AEW_lat[existing, (slc_num-1)]<=extra_lat_start and curv_val_extra< speed_curv_thresh:
                                         continue
@@ -1031,7 +1031,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
 
                             data_lon = AEW_lon_slc[~np.isnan(AEW_lon_slc)][-(extra_it+1)::].reshape(-1,1)
                             x = np.arange(len(data_lon)).reshape(-1,1)
-                            x_new = np.array([len(data_lon)]) 
+                            x_new = np.array([len(data_lon)])
                             x_new = x_new.reshape(-1,1)
 
                             model = LinearRegression().fit(x,data_lon)
@@ -1092,7 +1092,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
 
                             data_lon = AEW_lon_slc[~np.isnan(AEW_lon_slc)][-(extra_it+1)::].reshape(-1,1)
                             x = np.arange(len(data_lon)).reshape(-1,1)
-                            x_new = np.array([len(data_lon)]) 
+                            x_new = np.array([len(data_lon)])
                             x_new = x_new.reshape(-1,1)
 
                             model = LinearRegression().fit(x,data_lon)
@@ -1169,7 +1169,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
                 lati_append, n = find_nearest(lat, lat_center[idx])
                 lat_first_guess.append(lati_append)
 
-            # ------ Now, run centroid testing to get the final list of cent_lat and cent_lons -----------                                    
+            # ------ Now, run centroid testing to get the final list of cent_lat and cent_lons -----------
             cent_lat = []
             cent_lon = []
             for i in range(len(lat_first_guess)): #Iterate over the total # of initial points we have
@@ -1181,7 +1181,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
 
             # ----- DISTANCE TESTING FOR INITATED POINTS -----
             #NOW DO WE ADD THESE NEW POINTS TO THE LIST? DEPENDS ON IF THEY ARE WITHIN A RADIUS OF THE POINTS IN QUESTION
-            for init_point in range(len(cent_lon)): #For each potential initation point  
+            for init_point in range(len(cent_lon)): #For each potential initation point
                 win3_list = []
                 win6_list = []
                 for existing in range(np.shape(AEW_lon)[0]): #Check with each existing AEW track to see if it is within a distance of them
@@ -1215,7 +1215,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
             for idx in new_cont_out:
                 lati_append, n = find_nearest(lat, lat_center[idx])
                 lat_first_guess_cont.append(lati_append)
-            for i in range(len(new_cont_out)): 
+            for i in range(len(new_cont_out)):
                 loni = new_cont_out[i]
                 lati = lat_first_guess_cont[i]
 
@@ -1229,13 +1229,13 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
                     lon_point_array.append(lon_new_pt)
 
 
-                except: 
+                except:
                     print('Exception -- something major went wrong and not sure why.')
                     continue
 
 
         #NOW DO WE ADD THESE NEW POINTS TO THE LIST? DEPENDS ON IF THEY ARE WITHIN A RADIUS OF THE POINTS IN QUESTION
-            for existing in range(np.shape(AEW_lon)[0]): #Check with each 
+            for existing in range(np.shape(AEW_lon)[0]): #Check with each
                 if ~final_merge_list.any(): #Check to make sure we are not working with a merged wave
                     pass
                 elif existing in final_merge_list[:,1]:
@@ -1254,7 +1254,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
                     temp_lon_arr6 = []
                     temp_lat_arr6 = []
 
-                    for cont_i in range(len(lon_point_array)): #For each potential initation point 
+                    for cont_i in range(len(lon_point_array)): #For each potential initation point
                         temp_bool3, temp_dist3, fwd3 = within_distance_direct(lon, lat, lon_point_array[cont_i], lat_point_array[cont_i],
                                                                      AEW_lon[existing, (slc_num-1)], AEW_lat[existing, (slc_num-1)],
                                                                        step_3hr)
@@ -1264,7 +1264,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
 
 
 
-                        if temp_bool3 == True: #If it is within the specified range 
+                        if temp_bool3 == True: #If it is within the specified range
                             temp_dist_list3.append(temp_dist3)
                             temp_fwd_list3.append(fwd3)
                             temp_lon_arr3.append(lon_point_array[cont_i])
@@ -1277,25 +1277,25 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
 
 
                     #Now we have a list of points that satisfy the distance requirements for this given AEW. What now?
-                    #We determine the point the closest to the AEW from one timestep ago. If they don't exist, we try the same for 
+                    #We determine the point the closest to the AEW from one timestep ago. If they don't exist, we try the same for
                     #6 hourly.
 
                     #Caveat -- we don't necessarily prevent points from being fixed to two waves. Will see how this performs and
-                    #will adjust accordingly. Could be okay to identify wave mergers. 
+                    #will adjust accordingly. Could be okay to identify wave mergers.
                     temp_dist_list3 = np.array(temp_dist_list3)
                     temp_fwd_list3 = np.array(temp_fwd_list3)
                     temp_lat_list3 = np.array(temp_lat_arr3)
                     temp_lon_list3 = np.array(temp_lon_arr3)
 
                     if any(temp_dist_list3): #If there are any in the 1 timestep list
-                        min_i = np.argmin(temp_dist_list3)   
+                        min_i = np.argmin(temp_dist_list3)
                         #Test to see if latitudinal jump occurs
                         if np.abs(temp_lat_arr3[min_i]-AEW_lat[existing, (slc_num-1)])>= land_lat_limit:
                             continue
 
                         #Get some curvature value characteristics for later
                         curv_lon_back,n = find_nearest(lon, temp_lon_list3[min_i])
-                        curv_lat_back,n = find_nearest(lat, temp_lat_list3[min_i]) 
+                        curv_lat_back,n = find_nearest(lat, temp_lat_list3[min_i])
 
                         curv_val_back = curv_vort_data[curv_lat_back, curv_lon_back]
 
@@ -1319,13 +1319,13 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
                             back_cutoff = back_cutoff_land
                             back_cutoff_long = back_cutoff_long_land
                         fwd = temp_fwd_list3[min_i]
-                        if force_forward == True: 
+                        if force_forward == True:
                             if fwd == False:
                                 if AEW_lon[existing, (slc_num-1)] != AEW_lon[existing, (slc_num-stuck_thresh)] or cut_stuck == False:
                                     if temp_dist_list3[min_i]<= back_cutoff:
                                         AEW_lon[existing, slc_num] = AEW_lon[existing, (slc_num-1)]
                                         AEW_lat[existing, slc_num] = temp_lat_arr3[min_i]
-                            else:   
+                            else:
                                 if temp_lon_arr3[min_i] == AEW_lon[existing, (slc_num-stuck_thresh)]: #NEW, TEST FOR STUCK THRESH
                                     continue
                                 AEW_lon[existing, slc_num] = temp_lon_arr3[min_i]
@@ -1352,12 +1352,12 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
                                     if temp_dist_list6[min_i]<= back_cutoff_long and long_edit==True:
                                         AEW_lon[existing, slc_num] = AEW_lon[existing, (slc_num-2)]
                                         AEW_lat[existing, slc_num] = temp_lat_arr6[min_i]
-                            else:                    
+                            else:
                                 AEW_lon[existing, slc_num] = temp_lon_arr6[min_i]
                                 AEW_lat[existing, slc_num] = temp_lat_arr6[min_i]
                         else:
                             AEW_lon[existing, slc_num] = temp_lon_arr6[min_i]
-                            AEW_lat[existing, slc_num] = temp_lat_arr6[min_i]     
+                            AEW_lat[existing, slc_num] = temp_lat_arr6[min_i]
 
         if (speed_limit == True) and 'AEW_lon' in locals():
              for existing in range(np.shape(AEW_lon)[0]): #First iterate over all the waves
@@ -1368,7 +1368,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
                             continue
 
                         curv_lon,n = find_nearest(lon, AEW_lon_slc[slc_num])
-                        curv_lat,n = find_nearest(lat, AEW_lat_slc[slc_num]) 
+                        curv_lat,n = find_nearest(lat, AEW_lat_slc[slc_num])
 
                         curv_val = curv_vort_data[curv_lat, curv_lon]
 
@@ -1376,7 +1376,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
                             AEW_lon[existing, slc_num] = np.nan
                             AEW_lat[existing, slc_num] = np.nan
                             AEW_lon[existing, (slc_num-1)] = np.nan
-                            AEW_lat[existing, (slc_num-1)] = np.nan                                
+                            AEW_lat[existing, (slc_num-1)] = np.nan
 
     # --------------------------------------------------------------------------
     #END OF MAIN ITREATION LOOP
@@ -1399,7 +1399,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     reg_list = [num2date(i, time_units, only_use_cftime_datetimes = False) for i in time]
     data_slc = 2
 
-    if duplicate_removal == True: 
+    if duplicate_removal == True:
         rm_dup_list, merge_list = AEW_duplicate(AEW_lon,1, 1, 0.7)
 
         AEW_lon= np.delete(AEW_lon, rm_dup_list, axis = 0)
@@ -1497,7 +1497,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
 
         curv_data_mean = ncout.createVariable('curv_data_mean', np.dtype('float64').char, ('time','longitude'))
         curv_data_mean.long_name = 'Averaged Non-Divergent Curvature Vorticity (5-20N)'
-        curv_data_mean.units = 's**-1' 
+        curv_data_mean.units = 's**-1'
 
         # copy axis from original dataset
         time_data[:] = time[:]
@@ -1514,16 +1514,16 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     # -------------------------------------------------------------------------
     # END DATA SAVE
 
-    
+
 # -*- coding: utf-8 -*-
 
-def run_postprocessing(input_file = 'AEW_tracks_raw.nc', curv_data_file = 'radial_avg_curv_vort.nc',radius_used = 600, AEW_day_remove = 2, 
-                      real_year_used = 'None', AEW_merge_dist = 500, AEW_forward_connect_dist = 700, AEW_backward_connect_dist = 200, TC_merge_dist = 500, TC_pairing = False, TC_pair_lat_max = 25, 
+def run_postprocessing(input_file = 'AEW_tracks_raw.nc', curv_data_file = 'radial_avg_curv_vort.nc',radius_used = 600, AEW_day_remove = 2,
+                      real_year_used = 'None', AEW_merge_dist = 500, AEW_forward_connect_dist = 700, AEW_backward_connect_dist = 200, TC_merge_dist = 500, TC_pairing = False, TC_pair_lat_max = 25,
                       remove_duplicates = True, hovmoller_save = True, object_data_save = True, netcdf_data_save = True,
                       save_obj_file = 'AEW_tracks_post_processed.pkl', save_nc_file = 'AEW_tracks_post_processed.nc', hov_save_file = 'final_hovmoller.png', hov_name_prefix = '', hov_AEW_lat_lim = 25, hov_over_africa_color = True):
     """
-    AEW Postprocessing Script: Takes the computed AEW tracks and cleans them up. This includes combining duplicate tracks, removing short tracks, and connecting 
-broken tracks. 
+    AEW Postprocessing Script: Takes the computed AEW tracks and cleans them up. This includes combining duplicate tracks, removing short tracks, and connecting
+broken tracks.
     """
     import numpy as np
     import pandas as pd
@@ -1551,10 +1551,10 @@ broken tracks.
     merge_distance = AEW_merge_dist #Km
     connect_distance = AEW_forward_connect_dist#700 #km #Distance potentially "broken" waves can be connected if their end points imply westward propagation
     connect_distance_back = AEW_backward_connect_dist #km #Same, but for waves that are near stationary or move in the wrong direction
-    connect_step = 2 
+    connect_step = 2
     TC_min_month = 1 #earliest month for TC merging (FLAGGED: hard coding needs to be fixed)
 
-    ##### -- POSTPROCESSING SETTINGS -- ##### 
+    ##### -- POSTPROCESSING SETTINGS -- #####
     #### IMPORTANT: MINIMUM LENGTH OF TRACK! ####
     # This is the minimum number of days that will be kept as a AEW.
     days_remove = AEW_day_remove #Default: 2 (days)
@@ -1565,8 +1565,8 @@ broken tracks.
     save_hovmoller = hovmoller_save#True #Save basic hovmoller after running (Default: True)
     save_data = object_data_save #Save out the postprocessed AEW data (Default: True)
     save_data_nc = netcdf_data_save #Save out a NetCDF version of this data (Default: True)
-    
-    
+
+
     ### Prevent year issues
     if year_used == 'None' and pair_with_TC == True:
         raise Exception("Year must be specified if TC pairing option is turned on.")
@@ -1584,16 +1584,16 @@ broken tracks.
     def haversine(lon1, lat1, lon2, lat2):
         from math import radians, cos, sin, asin, sqrt
         """
-        Calculate the great circle distance between two points 
+        Calculate the great circle distance between two points
         on the earth (specified in decimal degrees)
         """
-        # convert decimal degrees to radians 
+        # convert decimal degrees to radians
         lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
-        # haversine formula 
-        dlon = lon2 - lon1 
-        dlat = lat2 - lat1 
+        # haversine formula
+        dlon = lon2 - lon1
+        dlat = lat2 - lat1
         a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-        c = 2 * asin(sqrt(a)) 
+        c = 2 * asin(sqrt(a))
         # Radius of earth in kilometers is 6371
         km = 6371* c
         return km
@@ -1672,7 +1672,7 @@ broken tracks.
 
     datafile = input_file
     save_hov = hov_save_file
-    
+
     ncfile = Dataset(datafile, 'r')
 
     # load in data
@@ -1735,9 +1735,9 @@ broken tracks.
                         elif old_wave_last>= new_wave_last:
                             temp_merge = [new_existing, existing]
                             AEW_lon[existing, slc_num:] = AEW_lon[new_existing, slc_num:]
-                            AEW_lat[existing, slc_num:] = AEW_lat[new_existing, slc_num:]           
+                            AEW_lat[existing, slc_num:] = AEW_lat[new_existing, slc_num:]
 
-                        #Finally, concatinate 
+                        #Finally, concatinate
                         if not final_merge_list.any():
                             final_merge_list = np.array(temp_merge).reshape(1,2)
                         else:
@@ -1771,7 +1771,7 @@ broken tracks.
 
                     if first_pos <= 0+tm_step or new_last_pos!=(first_pos-1-tm_step): #If out of range, or if the timestep in question is not a wave's first or last position
                         pass
-                    elif lon_first>=-17 and tm_step>connect_step: #If over land, we only want to check 18 hours 
+                    elif lon_first>=-17 and tm_step>connect_step: #If over land, we only want to check 18 hours
                         pass
                     else:
                         new_lon_last = new_AEW_lon_slc[first_pos-1-tm_step]
@@ -1785,7 +1785,7 @@ broken tracks.
                                 final_reconnect_list = np.array(temp_arr).reshape(1,2)
                             else:
                                 final_reconnect_list = np.vstack((final_reconnect_list, temp_arr))
-                        #WHOLE NEW BLOCK, ADDED LOGISTICS 
+                        #WHOLE NEW BLOCK, ADDED LOGISTICS
                         elif test_distance1<=connect_distance_back and lon_first>new_lon_last: #Same but for "backwards" wave
                             #print('BOOM!')
                             temp_arr = [existing, new_existing]
@@ -1797,7 +1797,7 @@ broken tracks.
 
                     if last_pos >= (np.shape(AEW_lon)[1]-1-tm_step) or new_first_pos!=(last_pos+1+tm_step): #If out of range, or if the timestep in question is not a wave's first or last position
                         pass
-                    elif lon_last>=-17 and tm_step>connect_step: #If over land, we only want to check 18 hours 
+                    elif lon_last>=-17 and tm_step>connect_step: #If over land, we only want to check 18 hours
                         pass
                     else:
                         new_lon_first = new_AEW_lon_slc[last_pos+1+tm_step]
@@ -1809,7 +1809,7 @@ broken tracks.
                             #print('BOOM!')
                             temp_arr = [existing, new_existing]
                             #print(existing, new_existing)
-                            #Finally, concatinate 
+                            #Finally, concatinate
                             if not final_reconnect_list.any():
                                 final_reconnect_list = np.array(temp_arr).reshape(1,2)
                             else:
@@ -1819,7 +1819,7 @@ broken tracks.
                             #print('BOOM!')
                             temp_arr = [existing, new_existing]
                             #print(existing, new_existing)
-                            #Finally, concatinate 
+                            #Finally, concatinate
                             if not final_reconnect_list.any():
                                 final_reconnect_list = np.array(temp_arr).reshape(1,2)
                             else:
@@ -1900,7 +1900,7 @@ broken tracks.
     AEW_lat = new_AEW_lat
     AEW_lon = new_AEW_lon
 
-    if duplicate_removal == True: 
+    if duplicate_removal == True:
         rm_dup_list, merge_list = AEW_duplicate(AEW_lon,1, 1, 0.7)
 
         AEW_lon= np.delete(AEW_lon, rm_dup_list, axis = 0)
@@ -1932,7 +1932,7 @@ broken tracks.
             current_date = current_storm.time[(stm_type!='DB') & (stm_type!='LO') & (stm_type!='WV')]
             current_lat = current_storm.lat[(stm_type!='DB') & (stm_type!='LO') & (stm_type!='WV')]
             current_lon = current_storm.lon[(stm_type!='DB') & (stm_type!='LO') & (stm_type!='WV')]
-            
+
             ### FLAG: THIS IS HARD-CODED!
             if (current_date[0] < datetime.datetime(int(year_used), TC_min_month, 1)) or np.min(current_lat)>=lat_cut:
                 continue
@@ -1961,7 +1961,7 @@ broken tracks.
                         continue
                     else:
                         pass
-    TC_wave_frame = np.array([linked_TC_name, linked_TC_wave])   
+    TC_wave_frame = np.array([linked_TC_name, linked_TC_wave])
 
     ## Find strength
     curvdata = curv_data_file#'CURV_VORT/RADIAL_AVG/radial_avg_curv_vort.nc'
@@ -1984,7 +1984,7 @@ broken tracks.
             lon_out = AEW_lon[storm, tm_i]
             lat_out = AEW_lat[storm, tm_i]
             if ~np.isnan(lon_out) and ~np.isnan(lat_out):
-                lon_i,n = find_nearest(lon, lon_out) 
+                lon_i,n = find_nearest(lon, lon_out)
                 lat_i,n = find_nearest(lat, lat_out)
                 curv_value = curv_vort_slice[lat_i, lon_i]
 
@@ -2025,7 +2025,7 @@ broken tracks.
         time_in = reg_list_edit[:][~np.isnan(AEW_lon[slc_num, :])]
         strength_in = AEW_strength[slc_num,:][~np.isnan(AEW_lon[slc_num, :])]
 
-        AEW_object = AEW(year_in,slc_num+1,time_in, lon_in, lat_in, smooth_lon_in, smooth_lat_in, strength_in, over_africa, connected_TC, TC_connect_name, TC_genesis_time)  
+        AEW_object = AEW(year_in,slc_num+1,time_in, lon_in, lat_in, smooth_lon_in, smooth_lat_in, strength_in, over_africa, connected_TC, TC_connect_name, TC_genesis_time)
         AEW_final_list.append(AEW_object)
 
     season_object = season(int(year_used), AEW_final_list)
@@ -2043,7 +2043,7 @@ broken tracks.
         AEW_lat_st = AEW_lat_i[0][0]
         AEW_lat_end = AEW_lat_i[-1][0]+1
         AEW_lon_filter_pull = savgol_filter(AEW_lon[row,AEW_lon_st:AEW_lon_end], smooth_len, 2, mode = 'nearest')
-        AEW_lat_filter_pull = savgol_filter(AEW_lat[row, AEW_lat_st:AEW_lat_end], smooth_len, 2, mode = 'nearest')   
+        AEW_lat_filter_pull = savgol_filter(AEW_lat[row, AEW_lat_st:AEW_lat_end], smooth_len, 2, mode = 'nearest')
         AEW_lon_filter[row,AEW_lon_st:AEW_lon_end] = AEW_lon_filter_pull
         AEW_lat_filter[row,AEW_lon_st:AEW_lon_end] = AEW_lat_filter_pull
 
@@ -2070,7 +2070,7 @@ broken tracks.
             AEW_gen_time_list[row] = np.datetime64('NaT')
             AEW_name_list[row] = TC_connect_name
             #TC_genesis_time_nc = [np.NaN]
-            #TC_connect_name_nc = [np.NaN]    
+            #TC_connect_name_nc = [np.NaN]
 
 
     if save_data == True:
@@ -2153,7 +2153,7 @@ broken tracks.
 
         curv_data_mean = ncout.createVariable('curv_data_mean', np.dtype('float64').char, ('time','longitude'))
         curv_data_mean.long_name = 'Averaged Non-Divergent Curvature Vorticity (5-20N)'
-        curv_data_mean.units = 's**-1' 
+        curv_data_mean.units = 's**-1'
 
         # copy axis from original dataset
         time_data[:] = time[:]
@@ -2187,7 +2187,7 @@ broken tracks.
                 ind_col = 'k'
                 z_d = 5
             plt.plot(AEW_lon_plot, reg_list, color = ind_col, linewidth = 3, zorder = z_d)
-        if pair_with_TC == True: 
+        if pair_with_TC == True:
             for TC_num in range(len(TC_id_list)):
             #Storm type array
 
