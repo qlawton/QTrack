@@ -22,37 +22,36 @@ from qtrack.tracking import run_postprocessing, run_tracking
 tstart = time.time()
 
 year_list = np.arange(1981, 2022, 1)
-gen_dir = '/data/qlawton/MERRA2/'
+gen_dir = "/data/qlawton/MERRA2/"
 for year_i in range(len(year_list)):
     year_in = year_list[year_i]
-    print('Running on Year: '+str(year_in))
+    print("Running on Year: " + str(year_in))
     # ### NAME FILES
-    file_in = gen_dir+'NONDIV/nondiv_wind_MERRA2_700hPa_wind_year_'+str(year_in)+'.nc'
-    prepped_data_save = file_in #gen_dir+'adjusted_nondiv_wind_MERRA2_700hPa_wind_year_'+str(year_in)+'.nc'
-    curv_file_out = gen_dir+"CURV_VORT/curv_vort_MERRA2_700hPa_year_"+str(year_in)+'.nc'
-    AEW_raw_save_file = gen_dir+'TRACKING/AEW_tracks_raw_year_'+str(year_in)+'.nc'
-    AEW_final_nc_file = gen_dir+'TRACKING/AEW_tracks_post_processed_year_'+str(year_in)+'.nc'
-    AEW_final_obj_file = gen_dir+'TRACKING/obj_AEW_tracks_post_processed_year_'+str(year_in)+'.pkl'
-    hov_save_out = gen_dir+'TRACKING/HOV/hovmoller_diagram_year_'+str(year_in)+'.png'
+    file_in = gen_dir + "NONDIV/nondiv_wind_MERRA2_700hPa_wind_year_" + str(year_in) + ".nc"
+    prepped_data_save = file_in  # gen_dir+'adjusted_nondiv_wind_MERRA2_700hPa_wind_year_'+str(year_in)+'.nc'
+    curv_file_out = gen_dir + "CURV_VORT/curv_vort_MERRA2_700hPa_year_" + str(year_in) + ".nc"
+    AEW_raw_save_file = gen_dir + "TRACKING/AEW_tracks_raw_year_" + str(year_in) + ".nc"
+    AEW_final_nc_file = gen_dir + "TRACKING/AEW_tracks_post_processed_year_" + str(year_in) + ".nc"
+    AEW_final_obj_file = gen_dir + "TRACKING/obj_AEW_tracks_post_processed_year_" + str(year_in) + ".pkl"
+    hov_save_out = gen_dir + "TRACKING/HOV/hovmoller_diagram_year_" + str(year_in) + ".png"
 
     # ### Prep data
 
-    #qtrack.prep_data(data_in = file_in,
+    # qtrack.prep_data(data_in = file_in,
     #                data_out = prepped_data_save, cut_lev_val = 70000)
 
     # ### Curvature vorticity calculation
-    data_file_in = prepped_data_save #"prepped_data_for_tracking.nc"#"analysis_and_forecast_GFS_2024062612.nc"
-    compute_curvvort(data_file_in, curv_file_out, njobs_in = 40, nondiv_wind=True)
+    data_file_in = prepped_data_save  # "prepped_data_for_tracking.nc"#"analysis_and_forecast_GFS_2024062612.nc"
+    compute_curvvort(data_file_in, curv_file_out, njobs_in=40, nondiv_wind=True)
 
     # ### AEW Tracking step
-    run_tracking(input_file = curv_file_out, save_file = AEW_raw_save_file)
-
+    run_tracking(input_file=curv_file_out, save_file=AEW_raw_save_file)
 
     # ### AEW Postprocessing step
-    run_postprocessing(input_file = AEW_raw_save_file, real_year_used = year_in, curv_data_file = curv_file_out, save_obj_file = AEW_final_obj_file, save_nc_file = AEW_final_nc_file, TC_merge_dist = 500, hov_save_file = hov_save_out, TC_pairing = True)
+    run_postprocessing(input_file=AEW_raw_save_file, real_year_used=year_in, curv_data_file=curv_file_out, save_obj_file=AEW_final_obj_file, save_nc_file=AEW_final_nc_file, TC_merge_dist=500, hov_save_file=hov_save_out, TC_pairing=True)
 
     # ### OUTPUT TIME
     tend = time.time()
     elapsed_time = tstart - tend
-    print('Time to run computation: '+ str(round(tend - tstart, 2))+ ' seconds | '+str(round((tend - tstart)/60,2))+ ' minutes')
+    print("Time to run computation: " + str(round(tend - tstart, 2)) + " seconds | " + str(round((tend - tstart) / 60, 2)) + " minutes")
     print()

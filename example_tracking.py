@@ -22,11 +22,11 @@ tstart = time.time()
 
 
 # ### NAME FILES
-prepped_data_save = 'adjusted_data.nc'
+prepped_data_save = "adjusted_data.nc"
 curv_file_out = "curv_vort_era5_test.nc"
-AEW_raw_save_file = 'AEW_tracks_raw.nc'
-AEW_final_nc_file = 'AEW_tracks_post_processed.nc'
-AEW_final_obj_file = 'AEW_tracks_post_processed.pkl'
+AEW_raw_save_file = "AEW_tracks_raw.nc"
+AEW_final_nc_file = "AEW_tracks_post_processed.nc"
+AEW_final_obj_file = "AEW_tracks_post_processed.pkl"
 year_in = 2021
 
 # ### DOWNLOAD EXAMPLE DATA (OPTIONAL)
@@ -34,25 +34,24 @@ qtrack.download_examples("mpas_2021092400", "")
 
 # ### Prep data
 
-qtrack.prep_data(data_in = "mpas_30km_run_2021092400.nc",
-                data_out = prepped_data_save, cut_lev_val = 70000)
+qtrack.prep_data(data_in="mpas_30km_run_2021092400.nc", data_out=prepped_data_save, cut_lev_val=70000)
 
 # ### Non-divergent wind calculation (TO BE IMPLEMENTED LATER)
 
 
 # ### Curvature vorticity calculation
-data_file_in = prepped_data_save #"prepped_data_for_tracking.nc"#"analysis_and_forecast_GFS_2024062612.nc"
-compute_curvvort(data_file_in, curv_file_out, njobs_in = -1)
+data_file_in = prepped_data_save  # "prepped_data_for_tracking.nc"#"analysis_and_forecast_GFS_2024062612.nc"
+compute_curvvort(data_file_in, curv_file_out, njobs_in=-1)
 
 # ### AEW Tracking step
-run_tracking(input_file = curv_file_out, save_file = AEW_raw_save_file)
+run_tracking(input_file=curv_file_out, save_file=AEW_raw_save_file)
 
 
 # ### AEW Postprocessing step
-run_postprocessing(input_file = AEW_raw_save_file, real_year_used = year_in, curv_data_file = curv_file_out, save_obj_file = AEW_final_obj_file, save_nc_file = AEW_final_nc_file)
+run_postprocessing(input_file=AEW_raw_save_file, real_year_used=year_in, curv_data_file=curv_file_out, save_obj_file=AEW_final_obj_file, save_nc_file=AEW_final_nc_file)
 
 # ### OUTPUT TIME
 tend = time.time()
 elapsed_time = tstart - tend
-print('Time to run computation: '+ str(round(tend - tstart, 2))+ ' seconds | '+str(round((tend - tstart)/60,2))+ ' minutes')
+print("Time to run computation: " + str(round(tend - tstart, 2)) + " seconds | " + str(round((tend - tstart) / 60, 2)) + " minutes")
 print()
