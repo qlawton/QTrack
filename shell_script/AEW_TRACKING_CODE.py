@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 AEW Tracking with inspiration from the Elless and Torn (2018) and Brammer and Thorncroft (2015) methodologies.
 Use of curvature vorticity field in general is the result of work shown by Berry et al. (2007).
@@ -19,8 +18,10 @@ at quinton.lawton@rsmas.miami.edu.
 #The following variables control the data being ingested, the name of the system
 #(and corresponding datafiles) being focused on, and information on the radius
 #of curvature vorticity averaging we want to pull from.
-import numpy as np
 import sys
+
+import numpy as np
+
 np.warnings.filterwarnings('ignore')
 
 #### INFO OF DATA TO RUN ON #####
@@ -151,21 +152,19 @@ stuck_thresh = int(stuck_thresh_day*24/temp_res)
 # -----------------------------------------------------------------------------
 
 # IMPORT STATEMENTS
-import numpy as np
-import datetime
-from netCDF4 import Dataset, num2date
-import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
-import matplotlib
-from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+import time as tm
+
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-import metpy.calc as mpcalc
-import time as tm
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
+import numpy as np
+from cartopy.mpl.ticker import LatitudeFormatter, LongitudeFormatter
+from netCDF4 import Dataset, num2date
 from scipy import signal
-from geopy.distance import geodesic
-from sklearn.linear_model import LinearRegression
 from scipy.signal import savgol_filter
+from sklearn.linear_model import LinearRegression
+
 
 # USER-DEFINED FUNCTIONS
 def find_nearest(array, value):
@@ -176,7 +175,7 @@ def find_nearest(array, value):
 
 
 def haversine(lon1, lat1, lon2, lat2):
-    from math import radians, cos, sin, asin, sqrt
+    from math import asin, cos, radians, sin, sqrt
     """
     Calculate the great circle distance between two points
     on the earth (specified in decimal degrees)

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# coding: utf-8
 
 # # Example: Using QTrack to tracking AEWs in reanalysis data
 #
@@ -13,12 +12,13 @@
 # 6. `postproc` Run postprocessing on AEW data, including the creation of a netCDF4 file.
 
 
-import qtrack
-from qtrack.nondivwind import compute_nondiv_wind
-from qtrack.curvvort import compute_curvvort
-from qtrack.tracking import run_tracking, run_postprocessing
 import time
+
 import numpy as np
+
+from qtrack.curvvort import compute_curvvort
+from qtrack.tracking import run_postprocessing, run_tracking
+
 tstart = time.time()
 
 year_list = np.arange(1981, 2022, 1)

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 def compute_curvvort(data_in, data_out = 'radial_avg_curv_vort.nc', radius_of_avg = 600, data_resolution = 1, njobs_in = 1, nondiv_wind = False, run_animation = False, gif_dir_in = ''):
     """

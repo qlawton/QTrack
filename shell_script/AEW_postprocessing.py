@@ -1,21 +1,16 @@
-# -*- coding: utf-8 -*-
 """
 AEW Postprocessing Script: Takes the computed AEW tracks and cleans them up. This includes combining duplicate tracks, removing short tracks, and connecting broken tracks.
 """
 
-import numpy as np
-import pandas as pd
 import datetime
+import sys
+
 import matplotlib
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
-import time as tm
-from netCDF4 import Dataset, num2date, date2num
-from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
-import cartopy.crs as ccrs
-import cartopy.feature as cfeature
+import numpy as np
+import pandas as pd
+from netCDF4 import Dataset, num2date
 from scipy.signal import savgol_filter
-import sys
 
 ##### HARD CODED SETTINGS. My recommendation is not to touch these unless you know what you're doing #####
 smooth_len = 7
@@ -49,7 +44,7 @@ def find_nearest(array, value):
     return idx, array[idx]
 
 def haversine(lon1, lat1, lon2, lat2):
-    from math import radians, cos, sin, asin, sqrt
+    from math import asin, cos, radians, sin, sqrt
     """
     Calculate the great circle distance between two points
     on the earth (specified in decimal degrees)
@@ -78,7 +73,7 @@ class season:
         for i in range(len(self.AEW_group)):
             TC_ans = self.AEW_group[i].connected_TC
             if TC_ans == True:
-                waves_TC.append((i+1))
+                waves_TC.append(i+1)
         return waves_TC
 
 def AEW_duplicate(lon_data, num_cutoff, close_cutoff, perc):

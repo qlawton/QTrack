@@ -17,8 +17,9 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     #The following variables control the data being ingested, the name of the system
     #(and corresponding datafiles) being focused on, and information on the radius
     #of curvature vorticity averaging we want to pull from.
-    import numpy as np
     import warnings
+
+    import numpy as np
     warnings.filterwarnings('ignore')
 
     #### INFO OF DATA TO RUN ON #####
@@ -148,19 +149,20 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
     # -----------------------------------------------------------------------------
 
     # IMPORT STATEMENTS
-    import numpy as np
-    import datetime
-    from netCDF4 import Dataset, num2date
-    import matplotlib.pyplot as plt
-    import matplotlib.ticker as mticker
-    #import matplotlib
-    from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+    import time as tm
+
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
-    import time as tm
+    import matplotlib.pyplot as plt
+    import matplotlib.ticker as mticker
+    import numpy as np
+
+    #import matplotlib
+    from cartopy.mpl.ticker import LatitudeFormatter, LongitudeFormatter
+    from netCDF4 import Dataset, num2date
     from scipy import signal
-    from sklearn.linear_model import LinearRegression
     from scipy.signal import savgol_filter
+    from sklearn.linear_model import LinearRegression
 
     # USER-DEFINED FUNCTIONS
     def find_nearest(array, value):
@@ -171,7 +173,7 @@ def run_tracking(input_file = 'radial_avg_curv_vort.nc', save_file = 'AEW_tracks
 
 
     def haversine(lon1, lat1, lon2, lat2):
-        from math import radians, cos, sin, asin, sqrt
+        from math import asin, cos, radians, sin, sqrt
         """
         Calculate the great circle distance between two points
         on the earth (specified in decimal degrees)
@@ -1525,20 +1527,14 @@ def run_postprocessing(input_file = 'AEW_tracks_raw.nc', curv_data_file = 'radia
     AEW Postprocessing Script: Takes the computed AEW tracks and cleans them up. This includes combining duplicate tracks, removing short tracks, and connecting
 broken tracks.
     """
+    import datetime
+
+    import dill as pickle
+    import matplotlib.pyplot as plt
     import numpy as np
     import pandas as pd
-    import datetime
-    import matplotlib
-    import matplotlib.pyplot as plt
-    import matplotlib.ticker as mticker
-    import time as tm
-    from netCDF4 import Dataset, num2date, date2num
-    from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
-    import cartopy.crs as ccrs
-    import cartopy.feature as cfeature
+    from netCDF4 import Dataset, num2date
     from scipy.signal import savgol_filter
-    import sys
-    import dill as pickle
     from tropycal import tracks
 
     ##### HARD CODED SETTINGS. My recommendation is not to touch these unless you know what you're doing #####
@@ -1582,7 +1578,7 @@ broken tracks.
         return idx, array[idx]
 
     def haversine(lon1, lat1, lon2, lat2):
-        from math import radians, cos, sin, asin, sqrt
+        from math import asin, cos, radians, sin, sqrt
         """
         Calculate the great circle distance between two points
         on the earth (specified in decimal degrees)
@@ -1611,7 +1607,7 @@ broken tracks.
             for i in range(len(self.AEW_group)):
                 TC_ans = self.AEW_group[i].connected_TC
                 if TC_ans == True:
-                    waves_TC.append((i+1))
+                    waves_TC.append(i+1)
             return waves_TC
 
     def AEW_duplicate(lon_data, num_cutoff, close_cutoff, perc):

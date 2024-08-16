@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Core Functions for the QTrack algorithm and associated functions.
 
@@ -6,26 +5,29 @@ Written by Quinton Lawton.
 """
 
 # IMPORT STATEMENTS
-import numpy as np
 import datetime
-from netCDF4 import Dataset, num2date
-import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
-import matplotlib
-from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+import os
+import time as tm
+
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-import time as tm
 import imageio
-from numpy import dtype
-import os
-import dill as pickle
+import matplotlib
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
+import numpy as np
 import xarray as xr
-from joblib.externals.loky import set_loky_pickler
+from cartopy.mpl.ticker import LatitudeFormatter, LongitudeFormatter
 from joblib import Parallel, delayed
+from joblib.externals.loky import set_loky_pickler
+from netCDF4 import Dataset, num2date
+from numpy import dtype
+
 set_loky_pickler("dill")
-import pandas as pd
 import warnings
+
+import pandas as pd
+
 
 class season:
     def __init__(self, year, AEW_group):
@@ -40,7 +42,7 @@ class season:
         for i in range(len(self.AEW_group)):
             TC_ans = self.AEW_group[i].connected_TC
             if TC_ans == True:
-                waves_TC.append((i+1))
+                waves_TC.append(i+1)
         return waves_TC
 
 
@@ -242,7 +244,6 @@ def prep_data(data_in, cut_lev_val = 700, data_out = 'prepped_data_for_tracking.
     print('Prepped data saved to: '+output_data)
 
 def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nondiv = True, SAVE_IMAGE = False, SAVE_OUTPUT = True, gif_dir_in = ''):
-    import numpy as np
     import time
     dir_ani_frame = 'frames_R'+str(radius)
 

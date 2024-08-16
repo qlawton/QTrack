@@ -4,8 +4,8 @@ QTrack - African Easterly Wave Tracking in Model and Reanalysis Data
 
 __version__ = "0.0.1"
 
-from .core import (COMPUTE_CURV_VORT_NON_DIV_UPDATE, download_examples,
-                  prep_data)
+from .core import COMPUTE_CURV_VORT_NON_DIV_UPDATE, download_examples, prep_data
+
 
 class season:
     def __init__(self, year, AEW_group):
@@ -20,7 +20,7 @@ class season:
         for i in range(len(self.AEW_group)):
             TC_ans = self.AEW_group[i].connected_TC
             if TC_ans == True:
-                waves_TC.append((i+1))
+                waves_TC.append(i+1)
         return waves_TC
 
 

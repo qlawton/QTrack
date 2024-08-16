@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 def compute_nondiv_wind(input_file, output_file = 'wind_700_helmholtz.nc'):
     """
@@ -7,15 +6,14 @@ def compute_nondiv_wind(input_file, output_file = 'wind_700_helmholtz.nc'):
 
     """
 
-    import numpy as np
-    import matplotlib as mpl
-    from netCDF4 import Dataset
-    import sys
-    import xarray as xr
 
-    from windspharm.standard import VectorWind
-    from windspharm.tools import prep_data, recover_data, order_latdim
+    import matplotlib as mpl
+    import numpy as np
+    import xarray as xr
+    from netCDF4 import Dataset
     from numpy import dtype
+    from windspharm.standard import VectorWind
+    from windspharm.tools import order_latdim, prep_data, recover_data
 
     def find_nearest(array, value):
         array = np.asarray(array)

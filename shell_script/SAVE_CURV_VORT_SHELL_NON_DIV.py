@@ -1,12 +1,11 @@
-# -*- coding: utf-8 -*-
 """
 Created on Mon Jun 22 16:06:58 2020
 
 @author: Quin7
 """
-import numpy as np
-from COMPUTE_SAVE_CURV_VORT_NON_DIV_UPDATE_FIX_PARALLEL import COMPUTE_CURV_VORT_NON_DIV_UPDATE
 import sys
+
+from COMPUTE_SAVE_CURV_VORT_NON_DIV_UPDATE_FIX_PARALLEL import COMPUTE_CURV_VORT_NON_DIV_UPDATE
 
 if len(sys.argv) == 1: #Basically, no inputs
     data_in = 'CURV_VORT/HELMHOLTZ/wind_700_helmholtz.nc'

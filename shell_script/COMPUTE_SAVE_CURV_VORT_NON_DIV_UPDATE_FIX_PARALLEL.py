@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on Mon Jun 22 15:42:18 2020
 
@@ -6,25 +5,23 @@ Created on Mon Jun 22 15:42:18 2020
 """
 def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nondiv = True, SAVE_IMAGE = False, SAVE_OUTPUT = True):
     # IMPORT STATEMENTS
-    import numpy as np
     import datetime
-    from netCDF4 import Dataset, num2date
-    import matplotlib.pyplot as plt
-    import matplotlib.ticker as mticker
-    import matplotlib
-    from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+    import os
+    import time as tm
+
     import cartopy.crs as ccrs
     import cartopy.feature as cfeature
-    import time as tm
     import imageio
-    from numpy import dtype
-    import os
-    import dill as pickle
+    import matplotlib
+    import matplotlib.pyplot as plt
+    import matplotlib.ticker as mticker
+    import numpy as np
     import xarray as xr
-    from joblib.externals.loky import set_loky_pickler
-    from joblib import parallel_config
+    from cartopy.mpl.ticker import LatitudeFormatter, LongitudeFormatter
     from joblib import Parallel, delayed
-    from joblib import wrap_non_picklable_objects
+    from joblib.externals.loky import set_loky_pickler
+    from netCDF4 import Dataset, num2date
+    from numpy import dtype
     set_loky_pickler("dill")
 
     import warnings
@@ -108,8 +105,9 @@ def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nond
 
     def GetBG(lon, lat, data_file, res, radius):
         #from joblib import Parallel, delayed
-        import numpy as np
         import time
+
+        import numpy as np
         start= time.time()
 
         def get_dist_meters(lon, lat):

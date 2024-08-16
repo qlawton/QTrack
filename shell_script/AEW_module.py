@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Created on Mon Aug 31 09:23:42 2020
 
@@ -18,7 +17,7 @@ class season:
         for i in range(len(self.AEW_group)):
             TC_ans = self.AEW_group[i].connected_TC
             if TC_ans == True:
-                waves_TC.append((i+1))
+                waves_TC.append(i+1)
         return waves_TC
 
 

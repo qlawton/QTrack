@@ -2,11 +2,10 @@
 # ## Combine 700hPa wind files between ERA5 and MPAS, ultimate goal to create one large CV file for tracking
 
 
-import xarray as xr
-import numpy as np
-import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
-import pandas as pd
+
+import numpy as np
+import xarray as xr
 
 ### Settings
 case_in = 'VICTOR'
