@@ -1,0 +1,24 @@
+name: qtrack-dev
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.10
+  #
+  # Core
+  - cartopy
+  - dill
+  - imageio
+  - joblib
+  - matplotlib-base
+  - netcdf4
+  - numpy
+  - pandas
+  - scikit-learn
+  - scipy
+  - tropycal
+  - xarray
+  #
+  # Extras
+  - gdown
+  # - windspharm
