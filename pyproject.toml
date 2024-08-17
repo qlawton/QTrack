@@ -27,6 +27,12 @@ dependencies = [
     "xarray",
 ]
 
+[project.optional-dependencies]
+test = [
+    "gdown",
+    "pytest",
+]
+
 [project.urls]
 Home = "https://github.com/qlawton/QTrack"
 
