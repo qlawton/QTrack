@@ -30,6 +30,18 @@ dependencies = [
 [project.urls]
 Home = "https://github.com/qlawton/QTrack"
 
+[tool.flit.sdist]
+exclude = [
+    ".github/",
+    ".gitignore",
+    ".pre-commit-config.yaml",
+    "environment-dev.yml",
+    "TOOLS/",
+    "shell_script/",
+    "**/*.ipynb",
+    "**/requirements.txt",
+]
+
 [tool.ruff]
 target-version = "py38"
 line-length = 255  # FIXME
