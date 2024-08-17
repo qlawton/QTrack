@@ -24,4 +24,5 @@ dependencies:
   # - windspharm
   #
   # Testing
+  - flit
   - pytest
