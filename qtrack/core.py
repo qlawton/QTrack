@@ -110,27 +110,26 @@ def download_examples(input_str, output_dir=""):
         g_id = "https://drive.google.com/uc?id=1aLJpb1UAFTdmZRX56bHVn25EzuTcL8d_"
         gdown.download(g_id, output_dir + out_str)
         print("Downloaded Successfully.")
-    if input_str == "era5_2010_10day":
+    elif input_str == "era5_2010_10day":
         out_str = "era5_700_wind_global_2010_10day.nc"
         print("Downloading ERA5 Test case to: " + output_dir + out_str)
         g_id = "https://drive.google.com/uc?id=1apXQ-Uut9A5-GuM-py-unWpuXoRvlvYk"
         gdown.download(g_id, output_dir + out_str)
         print("Downloaded Successfully.")
-    if input_str == "gfs_2024062612":
+    elif input_str == "gfs_2024062612":
         out_str = "analysis_and_forecast_GFS_2024062612.nc"
         print("Downloading GFS Test case to: " + output_dir + out_str)
         g_id = "https://drive.google.com/uc?id=1n1D4ICbTU3iVFls01ARwJNbWRKvR3ksr"
         gdown.download(g_id, output_dir + out_str)
         print("Downloaded Successfully.")
-    if input_str == "mpas_2021092400":
+    elif input_str == "mpas_2021092400":
         out_str = "mpas_30km_run_2021092400.nc"
         print("Downloading MPAS-A Test case to: " + output_dir + out_str)
         g_id = "https://drive.google.com/uc?id=1QxugrKwyP0o5UW1qbAaRC0NVnack_sML"
         gdown.download(g_id, output_dir + out_str)
         print("Downloaded Successfully.")
-
     else:
-        raise Exception("Invalid example data name provided. Please check that you are inputting a valid file name.")
+        raise ValueError(f"Invalid example data name provided {input_str!r}. Please check that you are inputting a valid file name.")
 
 
 def prep_data(data_in, cut_lev_val=700, data_out="prepped_data_for_tracking.nc"):
