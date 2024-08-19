@@ -8,7 +8,7 @@ This is similar to the AEW Tracker described by Lawton et al. (2022), which can 
 Existing AEW tracks for ERA5 data from 1979 - 2022 are already produced and available here: https://osf.io/j4hpq/
 
 ## Module Installation
-The easiest way to install is through pip and the PyPi repository. 
+The easiest way to install is through pip and the PyPi repository.
 
 `pip install qtrack`
 
@@ -17,12 +17,12 @@ The AEW tracker uses an input file containing 700hPa zonal (u) and meridional (v
 
 More detailed information on the tracking, not provided in the Lawton et al. (2022) paper or here, can be found in an online technical guide here: https://osf.io/6hqy5
 
-## Citing
+## Citation
 If you use this AEW tracker in your research, we ask that you acknowledge your use of this package and provide a citation to the original paper documenting the tracker.
 
 > Lawton, Q. A., S. J. Majumdar, K. Dotterer, C. Thorncroft, and C. J. Schreck, 2022: The Influence of Convectively Coupled Kelvin Waves on African Easterly Waves in a Wave-Following Framework. Monthly Weather Review, 150(8), 2055-2072,  https://doi.org/10.1175/MWR-D-21-0321.1.
 
-## Important Note on Non-Divergent Wind Step
+### Important Note on Non-Divergent Wind Step
 Due to inconsistencies in the windspharm package, which computes the non-divergent wind using spherical harmonics, the non-divergent wind step is currently not included in the package. This step was largely superfluous and thus not including this step is is not anticipated to have any major negative impacts. Nevertheless, it could result in AEW tracks slightly differing from those produced with this step included, including the AEW tracks in the Lawton et al. (2022) AEW databases. We hope to include a non-divergent wind step in a future release.
 
 # Getting Started
@@ -35,7 +35,7 @@ Due to inconsistencies in the windspharm package, which computes the non-diverge
 - Run post processing of AEWs using `run_postprocessing` function
 
 ## Example Workflow
-It is highly recommended that users view the [`example_tracking.ipynb`](https://github.com/qlawton/QTrack/blob/main/example_tracking.ipynb) or [`example_tracking.py`](https://github.com/qlawton/QTrack/blob/main/example_tracking.py) files located [on the github page](https://github.ocm/qlawton/QTrack) to see an example of AEW tracking.
+It is highly recommended that users view the [`example_tracking.ipynb`](https://github.com/qlawton/QTrack/blob/main/example_tracking.ipynb) or [`example_tracking.py`](https://github.com/qlawton/QTrack/blob/main/example_tracking.py) files located [on the github page](https://github.com/qlawton/QTrack) to see an example of AEW tracking.
 
 ## Example Data Files
 The `track.download_examples` function can be used to download datasets for users to test out AEW tracking on. Possible datasets to download include:
