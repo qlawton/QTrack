@@ -2,7 +2,7 @@
 
 The AEW tracker was developed by **Quinton Lawton**, currently affiliated with the NSF National Center for Atmospheric Research (NSF NCAR). This python module was developed with the support of **Zachary Moon** (NOAA ARL/Texas A&M University) and **Kelly Núñez Ocasio** (Texas A&M University).  
 
-This is similar to AEW Tracker described by Lawton et al. (2022), which can be found here: https://doi.org/10.1175/MWR-D-21-0321.1.
+This is similar to the AEW Tracker described by Lawton et al. (2022), which can be found here: https://doi.org/10.1175/MWR-D-21-0321.1.
 
 Existing AEW tracks for ERA5 data from 1979 - 2022 are already produced and available here: https://osf.io/j4hpq/
 
