@@ -54,7 +54,7 @@ from qtrack.curvvort import compute_curvvort
 from qtrack.tracking import run_postprocessing, run_tracking
 ~~~~
 
-# Details on essential included functions
+# Essential Function Details
 
 ## **Prep Data**
 *`qtrack.prep_data(data_in, cut_lev_val=700, data_out="prepped_data_for_tracking.nc")`*
@@ -69,16 +69,70 @@ This function ensures the AEW tracker runs properly on the included data. Data s
 
 This step computes the CV and takes the gridpoint averages. It is slow. **However, there is an option within the script to use multiprocessing, which is highly recommended.**
 
+- **data_in**: Prepped input U and V data used for computation of CV. Recommended that `prep_data` function is run before computing CV.
+- **data_out (Default: "radial_avg_curv_vort.nc')**: Name of CV file to be saved out.
+- **radius_of_avg (Default: 600)**: Radius (km) of CV averaging around each grid point.
+- **data_resolution (Default: 1)**: Spatial resolution (degrees) of input dataset.
+- **njobs_in (Default: 1)**: For multiprocessing (through joblib), the number of CPU jobs to run at a given time. Must be equal to or below the available number of CPUs. -1 will utilize all available CPUs. The more you use, the faster this step will run.
+- **nondiv_wind (Default: False)**: DEPRECATED, KEEP AT TRUE.
+- **run_animation (Default: False)**: Boolean switch to output an optional animation of CV, saved at the specified gif_dir_in. This will slow down the computation.
+- **gif_dir_in (Default: "")**: If animation is output, the file directory to output the animation.
+
 ## **AEW Tracking**
-*`qtrack.tracking.run_tracking(input_file="radial_avg_curv_vort.nc", save_file="AEW_tracks_raw.nc", initiation_bounds=(-35, 40), radius_used=600, threshold_initial=2e-6, threshold_continue=1e-7, threshold_continue_extrap=1e-6, extrap_day_limit=3, extrap_dist=700, extrap_dist_carib=500, extrap_latitude_max=50, extrap_latitude_min=5, extrap_longitude_start=-20, extrap_latitude_start=20, carib_longitude_start=-60, AEW_day_remove=2, centroid_radius=600, spatial_res=1, temporal_res=6, run_animation=True, speed_limit_in=True)`
-This step runs the AEW tracker on the computed CV output from the previous steps. It is fairly quick to run.*
+*`qtrack.tracking.run_tracking(input_file="radial_avg_curv_vort.nc", save_file="AEW_tracks_raw.nc", initiation_bounds=(-35, 40), radius_used=600, threshold_initial=2e-6, threshold_continue=1e-7, threshold_continue_extrap=1e-6, extrap_day_limit=3, extrap_dist=700, extrap_dist_carib=500, extrap_latitude_max=50, extrap_latitude_min=5, extrap_longitude_start=-20, extrap_latitude_start=20, carib_longitude_start=-60, AEW_day_remove=2, centroid_radius=600, spatial_res=1, temporal_res=6, run_animation=True, speed_limit_in=True)`*
+
+This step runs the AEW tracker on the computed CV output from the previous steps. It is fairly quick to run.
+
+- **input_file (Default: "radial_avg_curv_vort.nc")**: name of input curvature vorticity file.
+- **save_file (Default: "AEW_tracks_raw.nc")**: name of raw AEW output file to be saved.
+- **initiation_bounds (Default: (-35, 40)): Longitudes for which the tracker will allow new AEWs to be initiated, from west to east.
+- **radius used (Default: 600)**: Averaging radius used in previous CV calculation step.
+- **threshold_initial (Default: 2e-6)**: CV threshold (s-1) for initiating new AEW event.
+- **threshold_continue (Default: 1e-7)**: CV threshold (s-1) for continued tracking of AEWs over land.
+- **threshold_continue_extrap (Default: 1e-6)**: CV threshold (s-1) for continued tracking of AEWs when the extrapolation step has been started. Purposely higher over land than to limit extrapolation errors.
+- **extrap_day_limit (Default: 3)**: How long (days) an AEW must exist before the tracker switches to extrapolation from meridional averaging method. AEW must also be west of "extra_longitude_start" for extrapolation to occur.
+- **extrap_dist (Default: 700)**: Maximum distance (km) extrapolated center can be from last timestep to be included in new wave track.
+- **extrap_dist_carib (Default: 500)**: Maximum distance (km) extrapolated center can be from lat timestep to be included in new wave track, but for AEWs that exist at or west of "Caribbean" longitude threshold (defined in carib_longitude_start).
+- **extrap_latitude_max (Default: 50)**: Maximum latitude extrapolation will allow AEW tracks to be extended to.
+- **extrap_latitude_min (Default: 5)**: Minimum latitude extrapolation will allow AEWs to be extended to.
+- **extrap_longitude_start (Default: -20)**: Longitude where extrapolation can occur, at or west of this point.
+- **extrap_latitude_start (Default: 20)**: Extrapolation will automatically be started, no matter the longitude, if the wave center is at or above this latitude.
+- **carib_longitude_start (Default: -60)**: Longitude threshold of the "Caribbean". This is the point for which the extrapolation distance rules change to "extrap_dist_carib". Purposely smaller than over open ocean due to the influence of non-AEW CV centers that can create erroneous AEW tracks.
+- **AEW_day_remove (Default: 2)**: DEPRECATED, CHANGE IN POST-PROCESSING STEP NOT HERE.
+- **centroid_radius (Default: 600)**: Radius (km) of weighted centroid used to find AEW centers.
+- **spatial_res (Default: 1)**: Spatial resolution (degrees) of the input data.
+- **temporal_res (Default: 6)**: Temporal resolution (hours) of the input data.
+- **run_animation (Default: True)**: DEPRECATED, NO ANIMATION IS GENERATED.
+- **spped_limit_in (Default: True)**: Boolean, determines if a AEW "speed limit" is incorporated during tracking to prevent erroneously fast, slow, or backwards tracks.
 
 ## **Post-Processing of AEW Tracks**
 *`qtrack.tracking.run_postprocessing(input_file="AEW_tracks_raw.nc", curv_data_file="radial_avg_curv_vort.nc", radius_used=600, AEW_day_remove=2, real_year_used="None", AEW_merge_dist=500, AEW_forward_connect_dist=700, AEW_backward_connect_dist=200, TC_merge_dist=500, TC_pairing=False, TC_pair_lat_max=25, remove_duplicates=True, hovmoller_save=True, object_data_save=True, netcdf_data_save=True, save_obj_file="AEW_tracks_post_processed.pkl", save_nc_file="AEW_tracks_post_processed.nc", hov_save_file="final_hovmoller.png", hov_name_prefix="", hov_AEW_lat_lim=25,hov_over_africa_color=True)`*
 
-This step computes the netCDF4 files and saves the data there. It also tries to clean up the tracked AEW data. Importantly, there is a setting that eliminates AEWs that are not at least 2 days long. This can be adjusted within the script if necessary. There is also a feature to identify developing AEWs using HURDAT data (ONLY use this for reanalysis inputs), but this is buggy at the moment. This is why it is required that a year be input into this call, as this allows the code to select the correct year for comparison.
+This step computes the netCDF4 files and saves the data there. It also cleans up the tracked AEW data (remove duplicates, combine similar tracks, etc.). Importantly, there is a setting that eliminates AEWs that do not exist for the specified period. This can be adjusted within the script if necessary. There is also a feature to identify developing AEWs using HURDAT data (ONLY use this for reanalysis inputs), but this is buggy at the moment. This HURDAT step is why it is required that a year be input into this call, as this allows the code to select the correct year for TC tracks.
 
-# Details on optional functions
+- **input_file (Default: "AEW_tracks_raw.nc")**: path to input raw AEW file to be processed.
+- **curv_data_file (Default: "radial_avg_curv_vort.nc")**: path to CV data file from previous step, necessary to compute the AEW strength.
+- **radius_used (Default: 600)**: Radius (km) of averaging used in previous CV computation step.
+- **AEW_day_remove (Default: 2)**: Number of days a AEW needs to have a track to be included in final dataset. Helps eliminate short tracks that are likely associated with MCSs over Africa or erroneous.
+- **real_year_used (Default: "none")**: Year of data, used to compare AEW tracks to TC tracks for the separation of developing and non-developing AEWs. If you are using model data or data without a real-world analogy, put "none".
+- **AEW_merge_dist (Default: 500)**: Maximum distance (km) apart two AEW tracks have to be in order to be merged. Used to determine existence of duplicate tracks.
+- **AEW_forward_connect_dist (Default: 700)**: Maximum distance (km) in the forward (west) direction AEWs can be reconnected across time steps. This helps fix AEW tracks that may have erroneously gotten separated into two tracks.
+- **AEW_backward_connect_dist (Default: 200)**: Maximum distance (km) in the backwards (east) direction AEWs can be reconnected across time steps.
+- **TC_merge_dist (Default: 500)**: Distance (km) threshold used to associated AEWs with TCs. If a AEW is at or closer to this distance from a TC's genesis point (HURDAT), the AEW will be considered a developing wave and relevant information will be saved in the output file(s).
+- **TC_pairing (Default: False)**: Boolean indicating whether AEWs should be paired with TC data. Only use if your input data corresponds to observatons/reanalysis. Will not work if year is not specified in "real_year_used".
+- **TC_pair_lat_max (Default: 25)**: For optional hovmoller output, the maximum latitude of TC tracks to be displayed on hovmoller diagram.
+- **remove_duplicates (Default: True)**: Boolean indicating whether the code should try to remove duplicate AEW tracks.
+- **hovmoller_save (Default: True)**: Boolean indicating whether an output hovmoller should be generated after post-processing.
+- **object_data_save (Default: True)**: Boolean indicating whether AEW object files should be saved after post-processing.
+- **netcdf_data_save (Default: True)**: Boolean indicating whether netCDF files should be saved after post-processing.
+- **save_obj_file (Default: "AEW_tracks_post_processed.pkl")**: Name of output object file, if saved.
+- **save_nc_file (Default: "AEW_tracks_post_processed.nc")**: Name of output netCDF file, if saved.
+- **hov_save_file (Default: "final_hovmoller.png")**: Name of output hovmoller, if saved.
+- **hov_name_prefix (Default: "")**: Name to be displayed in title of hovmoller plot.
+- **hov_AEW_lat_lim (Default: 25)**: For optional hovmoller output, the maximum latitude of AEW tracks to be displayed on hovmoller diagram.
+- **hov_over_africa_color (Default: True)**: If true and hovmoller is produced, use a different color to indicate AEWs tracks that originate over Africa versus those that originate over the ocean.  
+
+# Optional Function Details
 
 ## **Download Example Data**
 *`qtrack.download_examples(input_str, output_dir="")`*
