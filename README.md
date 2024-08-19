@@ -1,4 +1,5 @@
 # QTrack: An African Easterly Wave Tracker
+**Version: 0.0.1**
 
 The AEW tracker was developed by **Quinton Lawton**, currently affiliated with the NSF National Center for Atmospheric Research (NSF NCAR). This python module was developed with the support of **Zachary Moon** (NOAA ARL/Texas A&M University) and **Kelly Núñez Ocasio** (Texas A&M University).  
 
@@ -29,9 +30,9 @@ Due to inconsistencies in the windspharm package, which computes the non-diverge
 - Run post processing of AEWs using `run_postprocessing` function
 
 ## Example Workflow
-It is highly recommended that users view the `example_tracking.ipynb` or `example_tracking.py` files to see an example of AEW tracking.
+It is highly recommended that users view the [`example_tracking.ipynb`](https://github.com/qlawton/QTrack/blob/main/example_tracking.ipynb) or [`example_tracking.py`](https://github.com/qlawton/QTrack/blob/main/example_tracking.py) files located [on the github page](https://github.ocm/qlawton/QTrack) to see an example of AEW tracking.
 
-## Example Files
+## Example Data Files
 The `track.download_examples` function can be used to download datasets for users to test out AEW tracking on. Possible datasets to download include:
 - `mpas_2021092400`: Downsampled data from a 30km run of the MPAS-A system for 9-24-2021 at 00Z. This data originates from research by Lawton et al. (2024): https://doi.org/10.1029/2023MS004187
 - `era5_2010`: ERA5 data for July through September of 2010
