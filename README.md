@@ -1,7 +1,8 @@
-# General Information
-This repo contains code to run the AEW Tracker described by Lawton et al. (2022), which can be found here: https://doi.org/10.1175/MWR-D-21-0321.1.
+# QTrack: An African Easterly Wave Tracker
 
-The AEW tracker was developed by Quinton Lawton, currently affiliated with the NSF National Center for Atmospheric Research (NSF NCAR). This python module was developed with the support of Zachary Moon (NOAA ARL/Texas A&M University) and Kelly Núñez Ocasio (Texas A&M University).  
+The AEW tracker was developed by **Quinton Lawton**, currently affiliated with the NSF National Center for Atmospheric Research (NSF NCAR). This python module was developed with the support of **Zachary Moon** (NOAA ARL/Texas A&M University) and **Kelly Núñez Ocasio** (Texas A&M University).  
+
+This is similar to AEW Tracker described by Lawton et al. (2022), which can be found here: https://doi.org/10.1175/MWR-D-21-0321.1.
 
 Existing AEW tracks for ERA5 data from 1979 - 2022 are already produced and available here: https://osf.io/j4hpq/
 
@@ -9,16 +10,6 @@ Existing AEW tracks for ERA5 data from 1979 - 2022 are already produced and avai
 The AEW tracker uses an input file containing 700hPa zonal (u) and meridional (v) wind and computes a curvature vorticity (CV) term that is smoothed using a 600km average around each gridpoint. Local maxima in this CV are then tracked in two different ways. Over the African continent, meridional averages of CV are used to find longitudinal local maxima, which are used as a first guess for a centroid location. Set thresholds of CV value define when a new AEW is initialized and whether an existing one continues being tracked. Over the Atlantic, the first guess for an existing AEW's location is estimated by the AEW's propagation speed, and it is later found again using a centroid. A post processing script cleans up some of the tracks.
 
 More detailed information on the tracking, not provided in the Lawton et al. (2022) paper or here, can be found in an online technical guide here: https://osf.io/6hqy5
-
-## Input files
-**You need u and v winds on a 1x1 degree grid with 6-hourly temporal outputs**. This is the optimal resolution tested in Lawton et al. (2022), but it can be adjusted manually in the code if necessary to change. Furthermore, it is highly recommended that at least 10 days of data are included. The tracking needs a bit of spinup, so if you are running this on model output, it is recommended you append a few days to 1 week of analysis/reanalysis data prior to the first model timestep. Input data should geographically cover at least a portion of the African continent and/or Atlantic Ocean. Note that by default, the tracker does not initiate new waves west of 35W, but this can be adjusted in the tracking function.
-
-A sample model data/reanalysis combination script is provided under `tools/wind_combine.py`
-
-## Output AEW Track files
-Two different kinds of output files are produced, a netCDF file and a python pickle file (with AEWs saved as objects). It is recommended that you use netCDF if possible. However, if you need to use the pickle files for whatever reason, you will need to have the `AEW_module.py` script available locally when you open them.
-
-Details on the AEW objects and AEW_module.py are available here: https://osf.io/jnv5u
 
 ## Citing
 If you use this AEW tracker in your research, we ask that you acknowledge your use of this package and provide a citation to the original paper documenting the tracker.
@@ -31,7 +22,7 @@ Due to inconsistencies in the windspharm package, which computes the non-diverge
 # Getting Started
 
 ## Recommended Workflow Steps
-- Adjust input data to 1x1 degree resolution and 6 hourly temporal resolution (must be done prior to running this code)
+- Adjust input U/V wind data (preferably at or near pressure level 700hPa) to 1x1 degree resolution and 6 hourly temporal resolution. This must be done prior to running this code.
 - Prepare input data using `prep_data` function
 - Compute curvature vorticity fields using `curvvort` function
 - Run the AEW tracking code using `run_tracking` function
@@ -53,6 +44,16 @@ import qtrack
 from qtrack.curvvort import compute_curvvort
 from qtrack.tracking import run_postprocessing, run_tracking
 ~~~~
+
+## Input Wind files
+**You need u and v winds on a 1x1 degree grid with 6-hourly temporal outputs**. This is the optimal resolution tested in Lawton et al. (2022), but it can be adjusted manually in the code if necessary to change. Furthermore, it is highly recommended that at least 10 days of data are included. The tracking needs a bit of spinup, so if you are running this on model output, it is recommended you append a few days to 1 week of analysis/reanalysis data prior to the first model timestep. Input data should geographically cover at least a portion of the African continent and/or Atlantic Ocean. Note that by default, the tracker does not initiate new waves west of 35W, but this can be adjusted in the tracking function.
+
+A sample model data/reanalysis combination script is provided under `tools/wind_combine.py`
+
+## Output AEW Track files
+Two different kinds of output files are produced, a netCDF file and a python pickle file (with AEWs saved as objects). It is recommended that you use netCDF if possible. However, if you need to use the pickle files for whatever reason, you will need to have the `AEW_module.py` script available locally when you open them.
+
+Details on the AEW objects and AEW_module.py are available here: https://osf.io/jnv5u
 
 # Essential Function Details
 
