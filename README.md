@@ -1,14 +1,14 @@
 # QTrack: An African Easterly Wave Tracker
-
 **Version: 0.0.1**
-
-**Quinton Lawton, NSF National Center for Atmospheric Research**
 
 The AEW tracker was developed by **Quinton Lawton**, currently affiliated with the NSF National Center for Atmospheric Research (NSF NCAR). This python module was developed with the support of **Zachary Moon** (NOAA ARL/Texas A&M University) and **Kelly Núñez Ocasio** (Texas A&M University).  
 
 This is similar to the AEW Tracker described by Lawton et al. (2022), which can be found here: https://doi.org/10.1175/MWR-D-21-0321.1.
 
 Existing AEW tracks for ERA5 data from 1979 - 2022 are already produced and available here: https://osf.io/j4hpq/
+
+## module installation
+`pip install qtrack`
 
 ## How the tracker works
 The AEW tracker uses an input file containing 700hPa zonal (u) and meridional (v) wind and computes a curvature vorticity (CV) term that is smoothed using a 600km average around each gridpoint. Local maxima in this CV are then tracked in two different ways. Over the African continent, meridional averages of CV are used to find longitudinal local maxima, which are used as a first guess for a centroid location. Set thresholds of CV value define when a new AEW is initialized and whether an existing one continues being tracked. Over the Atlantic, the first guess for an existing AEW's location is estimated by the AEW's propagation speed, and it is later found again using a centroid. A post processing script cleans up some of the tracks.
