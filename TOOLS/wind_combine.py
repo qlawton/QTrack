@@ -2,23 +2,22 @@
 # ## Combine 700hPa wind files between ERA5 and MPAS, ultimate goal to create one large CV file for tracking
 
 
-import xarray as xr 
-import numpy as np
-import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
-import pandas as pd
+
+import numpy as np
+import xarray as xr
 
 ### Settings
 case_in = 'VICTOR'
 run_in = 'CPEX_RUN'
 year_in = '2021'
 cut_start = '2021-09-24-00' #The start time of the MPAS data
-cut_end = '2021-10-03-19' #The end of the MPAS data 
+cut_end = '2021-10-03-19' #The end of the MPAS data
 cut_start_early = '2021-09-23-18' #6 hours before the MPAS start -- basically, where the ERA5 data will end when merged
 era5_start = '2021-09-01-00' #Where we want to start the ERA5 data from when merging
 save_data = True # Save output of data
 
-out_name = 'wind_for_tracking' #What you want to call 
+out_name = 'wind_for_tracking' #What you want to call
 hr_delta = 1 #Time delta of the MPAS output (hours)
 hr_plot_delta = 6 #Time delta of DESIRED output (hours, 6 hours for AEW tracking is good)
 
@@ -37,7 +36,7 @@ era5_xr = xr.open_dataset(era5_in, chunks = 'auto').sel(time = slice(era5_start,
 orig_xr = xr.open_dataset(mpas_orig)
 u_iso_levels_real = orig_xr['u_iso_levels']
 
-## Start adjusting the mpas data (NOTE: These could changed based on the 
+## Start adjusting the mpas data (NOTE: These could changed based on the
 mpas_xr.coords['u_iso_levels'] = u_iso_levels_real.values #Assign coordinate since this isn't also output
 mpas_xr = mpas_xr.sel(u_iso_levels = 700*100) #We want the 700hPa level
 
@@ -48,7 +47,7 @@ lon_round = np.round(mpas_xr.coords['longitude'].values)
 
 # Replace with the real value
 mpas_xr.coords['longitude'] = lon_round
-mpas_xr.coords['latitude'] = lat_round 
+mpas_xr.coords['latitude'] = lat_round
 
 # Rename the variables (this depends on your data files
 mpas_xr = mpas_xr.rename({'umeridional_isobaric':'v', 'uzonal_isobaric':'u'})
