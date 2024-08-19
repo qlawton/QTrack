@@ -56,29 +56,19 @@ from qtrack.tracking import run_postprocessing, run_tracking
 
 # Details on essential included functions
 
-## **Prep Data** `qtrack.prep_data(data_in, cut_lev_val=700, data_out="prepped_data_for_tracking.nc")`
+## **Prep Data**
+*`qtrack.prep_data(data_in, cut_lev_val=700, data_out="prepped_data_for_tracking.nc")`*
 This function ensures the AEW tracker runs properly on the included data. Data should already be at 1x1 degree resolution and 6 hourly temporal resolution. This script will flip the lon/lat coordinates to their property directions, check that all necessary components are included, and slice out the desired height-level if it's 3D data.
-- data_in: The input data. Should be 2- or 3-dimensional data with U-wind component labeled as "u" and V-wind component labelled as "v". The data file should contain longitudes named "longitude", "lon", or "lons", and latitudes labeled "latitude", "lat", or "lats'.
-- cut_lev_val (Default: 700): If 3D data, the pressure level to cut out for AEW tracking. Recommended to be near 700hPa.
-- data_out (Default: "prepped_data_for_tracking.nc"): The name of the output data.
+- **data_in** The input data. Should be 2- or 3-dimensional data with U-wind component labeled as "u" and V-wind component labelled as "v". The data file should contain longitudes named "longitude", "lon", or "lons", and latitudes labeled "latitude", "lat", or "lats'.
+- **cut_lev_val (Default: 700)** If 3D data, the pressure level to cut out for AEW tracking. Recommended to be near 700hPa.
+- **data_out (Default: "prepped_data_for_tracking.nc")** The name of the output data.
 
 ## **Compute Curvature Vorticity and Averaging** `qtrack.curvvort.compute_curvvort(data_in, data_out="radial_avg_curv_vort.nc", radius_of_avg=600, data_resolution=1, njobs_in=1, nondiv_wind=False, run_animation=False, gif_dir_in="")`
 This step computes the CV and takes the gridpoint averages. It is slow. **However, there is an option within the script to use multiprocessing, which is highly recommended.**
 
-## **AEW Tracking** `qtrack.tracking.run_tracking(
-    input_file="radial_avg_curv_vort.nc", save_file="AEW_tracks_raw.nc", initiation_bounds=(-35, 40), radius_used=600, threshold_initial=2e-6, threshold_continue=1e-7, threshold_continue_extrap=1e-6, extrap_day_limit=3, extrap_dist=700, extrap_dist_carib=500, extrap_latitude_max=50,
-    extrap_latitude_min=5,
-    extrap_longitude_start=-20,
-    extrap_latitude_start=20,
-    carib_longitude_start=-60,
-    AEW_day_remove=2,
-    centroid_radius=600,
-    spatial_res=1,
-    temporal_res=6,
-    run_animation=True,
-    speed_limit_in=True,
-)`
-This step runs the AEW tracker on the computed CV output from the previous steps. It is fairly quick to run.
+## **AEW Tracking**
+*`qtrack.tracking.run_tracking(input_file="radial_avg_curv_vort.nc", save_file="AEW_tracks_raw.nc", initiation_bounds=(-35, 40), radius_used=600, threshold_initial=2e-6, threshold_continue=1e-7, threshold_continue_extrap=1e-6, extrap_day_limit=3, extrap_dist=700, extrap_dist_carib=500, extrap_latitude_max=50, extrap_latitude_min=5, extrap_longitude_start=-20, extrap_latitude_start=20, carib_longitude_start=-60, AEW_day_remove=2, centroid_radius=600, spatial_res=1, temporal_res=6, run_animation=True, speed_limit_in=True)`
+This step runs the AEW tracker on the computed CV output from the previous steps. It is fairly quick to run.*
 
 ## **Post-Processing of AEW Tracks** `qtrack.tracking.run_postprocessing()`
 This step computes the netCDF4 files and saves the data there. It also tries to clean up the tracked AEW data. Importantly, there is a setting that eliminates AEWs that are not at least 2 days long. This can be adjusted within the script if necessary. There is also a feature to identify developing AEWs using HURDAT data (ONLY use this for reanalysis inputs), but this is buggy at the moment. This is why it is required that a year be input into this call, as this allows the code to select the correct year for comparision.
