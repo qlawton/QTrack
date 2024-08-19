@@ -7,7 +7,9 @@ This is similar to the AEW Tracker described by Lawton et al. (2022), which can 
 
 Existing AEW tracks for ERA5 data from 1979 - 2022 are already produced and available here: https://osf.io/j4hpq/
 
-## module installation
+## Module Installation
+The easiest way to install is through pip and the PyPi repository. 
+
 `pip install qtrack`
 
 ## How the tracker works
