@@ -10,9 +10,6 @@ The AEW tracker uses an input file containing 700hPa zonal (u) and meridional (v
 
 More detailed information on the tracking, not provided in the Lawton et al. (2022) paper or here, can be found in an online technical guide here: https://osf.io/6hqy5
 
-## Important Note on Non-Divergent Wind Step
-Due to inconsistencies in the windspharm package, which computes the non-divergent wind using spherical harmonics, the non-divergent wind step is currently not included in the package. This step was largely superfluous and thus not including this step is is not anticipated to have any major negative impacts. Nevertheless, it could result in AEW tracks slightly differing from those produced with this step included, including the AEW tracks in the Lawton et al. (2022) AEW databases. We hope to include a non-divergent wind step in a future release.
-
 ## Input files
 **You need u and v winds on a 1x1 degree grid with 6-hourly temporal outputs**. This is the optimal resolution tested in Lawton et al. (2022), but it can be adjusted manually in the code if necessary to change. Furthermore, it is highly recommended that at least 10 days of data are included. The tracking needs a bit of spinup, so if you are running this on model output, it is recommended you append a few days to 1 week of analysis/reanalysis data prior to the first model timestep. Input data should geographically cover at least a portion of the African continent and/or Atlantic Ocean. Note that by default, the tracker does not initiate new waves west of 35W, but this can be adjusted in the tracking function.
 
@@ -26,7 +23,10 @@ Details on the AEW objects and AEW_module.py are available here: https://osf.io/
 ## Citing
 If you use this AEW tracker in your research, we ask that you acknowledge your use of this package and provide a citation to the original paper documenting the tracker.
 
-Lawton, Q. A., S. J. Majumdar, K. Dotterer, C. Thorncroft, and C. J. Schreck, 2022: The Influence of Convectively Coupled Kelvin Waves on African Easterly Waves in a Wave-Following Framework. Monthly Weather Review, 150(8), 2055-2072,  https://doi.org/10.1175/MWR-D-21-0321.1.
+> Lawton, Q. A., S. J. Majumdar, K. Dotterer, C. Thorncroft, and C. J. Schreck, 2022: The Influence of Convectively Coupled Kelvin Waves on African Easterly Waves in a Wave-Following Framework. Monthly Weather Review, 150(8), 2055-2072,  https://doi.org/10.1175/MWR-D-21-0321.1.
+
+## Important Note on Non-Divergent Wind Step
+Due to inconsistencies in the windspharm package, which computes the non-divergent wind using spherical harmonics, the non-divergent wind step is currently not included in the package. This step was largely superfluous and thus not including this step is is not anticipated to have any major negative impacts. Nevertheless, it could result in AEW tracks slightly differing from those produced with this step included, including the AEW tracks in the Lawton et al. (2022) AEW databases. We hope to include a non-divergent wind step in a future release.
 
 # Getting Started
 
@@ -56,18 +56,21 @@ from qtrack.tracking import run_postprocessing, run_tracking
 
 # Essential Function Details
 
-## **Prep Data**
-*`qtrack.prep_data(data_in, cut_lev_val=700, data_out="prepped_data_for_tracking.nc")`*
+## **Prep Data** `qtrack.prep_data`
 
 This function ensures the AEW tracker runs properly on the included data. Data should already be at 1x1 degree resolution and 6 hourly temporal resolution. This script will flip the lon/lat coordinates to their property directions, check that all necessary components are included, and slice out the desired height-level if it's 3D data.
+
+*`qtrack.prep_data(data_in, cut_lev_val=700, data_out="prepped_data_for_tracking.nc")`*
+
 - **data_in**: The input data. Should be 2- or 3-dimensional data with U-wind component labeled as "u" and V-wind component labelled as "v". The data file should contain longitudes named "longitude", "lon", or "lons", and latitudes labeled "latitude", "lat", or "lats'.
 - **cut_lev_val (Default: 700)** If 3D data, the pressure level to cut out for AEW tracking. Recommended to be near 700hPa.
 - **data_out (Default: "prepped_data_for_tracking.nc")**: The name of the output data.
 
-## **Compute Curvature Vorticity and Averaging**
-*`qtrack.curvvort.compute_curvvort(data_in, data_out="radial_avg_curv_vort.nc", radius_of_avg=600, data_resolution=1, njobs_in=1, nondiv_wind=False, run_animation=False, gif_dir_in="")`*
+## **Compute Curvature Vorticity and Averaging** `qtrack.curvvort.compute_curvvort`
 
 This step computes the CV and takes the gridpoint averages. It is slow. **However, there is an option within the script to use multiprocessing, which is highly recommended.**
+
+*`qtrack.curvvort.compute_curvvort(data_in, data_out="radial_avg_curv_vort.nc", radius_of_avg=600, data_resolution=1, njobs_in=1, nondiv_wind=False, run_animation=False, gif_dir_in="")`*
 
 - **data_in**: Prepped input U and V data used for computation of CV. Recommended that `prep_data` function is run before computing CV.
 - **data_out (Default: "radial_avg_curv_vort.nc')**: Name of CV file to be saved out.
@@ -78,10 +81,11 @@ This step computes the CV and takes the gridpoint averages. It is slow. **Howeve
 - **run_animation (Default: False)**: Boolean switch to output an optional animation of CV, saved at the specified gif_dir_in. This will slow down the computation.
 - **gif_dir_in (Default: "")**: If animation is output, the file directory to output the animation.
 
-## **AEW Tracking**
-*`qtrack.tracking.run_tracking(input_file="radial_avg_curv_vort.nc", save_file="AEW_tracks_raw.nc", initiation_bounds=(-35, 40), radius_used=600, threshold_initial=2e-6, threshold_continue=1e-7, threshold_continue_extrap=1e-6, extrap_day_limit=3, extrap_dist=700, extrap_dist_carib=500, extrap_latitude_max=50, extrap_latitude_min=5, extrap_longitude_start=-20, extrap_latitude_start=20, carib_longitude_start=-60, AEW_day_remove=2, centroid_radius=600, spatial_res=1, temporal_res=6, run_animation=True, speed_limit_in=True)`*
+## **AEW Tracking** `qtrack.tracking.run_tracking`
 
 This step runs the AEW tracker on the computed CV output from the previous steps. It is fairly quick to run.
+
+*`qtrack.tracking.run_tracking(input_file="radial_avg_curv_vort.nc", save_file="AEW_tracks_raw.nc", initiation_bounds=(-35, 40), radius_used=600, threshold_initial=2e-6, threshold_continue=1e-7, threshold_continue_extrap=1e-6, extrap_day_limit=3, extrap_dist=700, extrap_dist_carib=500, extrap_latitude_max=50, extrap_latitude_min=5, extrap_longitude_start=-20, extrap_latitude_start=20, carib_longitude_start=-60, AEW_day_remove=2, centroid_radius=600, spatial_res=1, temporal_res=6, run_animation=True, speed_limit_in=True)`*
 
 - **input_file (Default: "radial_avg_curv_vort.nc")**: name of input curvature vorticity file.
 - **save_file (Default: "AEW_tracks_raw.nc")**: name of raw AEW output file to be saved.
@@ -105,10 +109,11 @@ This step runs the AEW tracker on the computed CV output from the previous steps
 - **run_animation (Default: True)**: DEPRECATED, NO ANIMATION IS GENERATED.
 - **spped_limit_in (Default: True)**: Boolean, determines if a AEW "speed limit" is incorporated during tracking to prevent erroneously fast, slow, or backwards tracks.
 
-## **Post-Processing of AEW Tracks**
-*`qtrack.tracking.run_postprocessing(input_file="AEW_tracks_raw.nc", curv_data_file="radial_avg_curv_vort.nc", radius_used=600, AEW_day_remove=2, real_year_used="None", AEW_merge_dist=500, AEW_forward_connect_dist=700, AEW_backward_connect_dist=200, TC_merge_dist=500, TC_pairing=False, TC_pair_lat_max=25, remove_duplicates=True, hovmoller_save=True, object_data_save=True, netcdf_data_save=True, save_obj_file="AEW_tracks_post_processed.pkl", save_nc_file="AEW_tracks_post_processed.nc", hov_save_file="final_hovmoller.png", hov_name_prefix="", hov_AEW_lat_lim=25,hov_over_africa_color=True)`*
+## **Post-Processing of AEW Tracks** `qtrack.tracking.run_postprocessing`
 
 This step computes the netCDF4 files and saves the data there. It also cleans up the tracked AEW data (remove duplicates, combine similar tracks, etc.). Importantly, there is a setting that eliminates AEWs that do not exist for the specified period. This can be adjusted within the script if necessary. There is also a feature to identify developing AEWs using HURDAT data (ONLY use this for reanalysis inputs), but this is buggy at the moment. This HURDAT step is why it is required that a year be input into this call, as this allows the code to select the correct year for TC tracks.
+
+*`qtrack.tracking.run_postprocessing(input_file="AEW_tracks_raw.nc", curv_data_file="radial_avg_curv_vort.nc", radius_used=600, AEW_day_remove=2, real_year_used="None", AEW_merge_dist=500, AEW_forward_connect_dist=700, AEW_backward_connect_dist=200, TC_merge_dist=500, TC_pairing=False, TC_pair_lat_max=25, remove_duplicates=True, hovmoller_save=True, object_data_save=True, netcdf_data_save=True, save_obj_file="AEW_tracks_post_processed.pkl", save_nc_file="AEW_tracks_post_processed.nc", hov_save_file="final_hovmoller.png", hov_name_prefix="", hov_AEW_lat_lim=25,hov_over_africa_color=True)`*
 
 - **input_file (Default: "AEW_tracks_raw.nc")**: path to input raw AEW file to be processed.
 - **curv_data_file (Default: "radial_avg_curv_vort.nc")**: path to CV data file from previous step, necessary to compute the AEW strength.
@@ -134,9 +139,11 @@ This step computes the netCDF4 files and saves the data there. It also cleans up
 
 # Optional Function Details
 
-## **Download Example Data**
-*`qtrack.download_examples(input_str, output_dir="")`*
+## **Download Example Data** `qtrack.download_examples`
 
 Downloads example datasets for AEW tracking. Available files are included above.
+
+*`qtrack.download_examples(input_str, output_dir="")`*
+
 - **input_str**: Input string (from list above) indicating example dateset to be downloaded.
 - **output_dir (Default: "")**: directory path to save downloaded data.
