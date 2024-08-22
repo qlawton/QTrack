@@ -236,7 +236,7 @@ def prep_data(data_in, cut_lev_val=700, data_out="prepped_data_for_tracking.nc")
     if max_lon > 180:
         warnings.warn("WARNING: LONGITUDE VALUE EXCEEDS 180. Assuming longitude data is formatted in absolute (0 to 360) and adjusting to W/E degrees.")
         warnings.warn("Please double check your data to ensure you have the correct coordinate system.")
-        data_xr.coords["longitude"] = (data_xr.coordds["longitude"] + 180) % 360 - 180
+        data_xr.coords["longitude"] = (data_xr.coords["longitude"] + 180) % 360 - 180
         data_xr = data_xr.sortby(data_xr.longitude)
     ### FINALLY, NEED TO CUT TIME TO EVERY 6 HOURS
     data_xr = check_and_resample(data_xr)
