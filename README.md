@@ -1,5 +1,5 @@
 # QTrack: An African Easterly Wave Tracker
-**Version: 0.0.1**
+**Version: 0.0.2**
 
 The AEW tracker was developed by **Quinton Lawton**, currently affiliated with the NSF National Center for Atmospheric Research (NSF NCAR). This python module was developed with the support of **Zachary Moon** (NOAA ARL/Texas A&M University) and **Kelly Núñez Ocasio** (Texas A&M University).  
 
