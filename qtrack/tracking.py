@@ -2,6 +2,8 @@ def run_tracking(
     input_file="radial_avg_curv_vort.nc",
     save_file="AEW_tracks_raw.nc",
     initiation_bounds=(-35, 40),
+    lat_avg_bounds = (5, 15),
+    left_right_bounds = (-180, 40),
     radius_used=600,
     threshold_initial=2e-6,
     threshold_continue=1e-7,
@@ -406,8 +408,8 @@ def run_tracking(
 
         ## ----- TAKE ELLESS'S FEEDBACK INTO CONSIDERATION, CONSIDER 5 SEPARATE "BANDS" -----
         if separate_bands:
-            lat_extra_end, _ = find_nearest(lat, 15)
-            lat_extra_st, _ = find_nearest(lat, 5)
+            lat_extra_end, _ = find_nearest(lat, lat_avg_bounds[-1])
+            lat_extra_st, _ = find_nearest(lat, lat_avg_bounds[0])
             # print(lat_extra_st, lat_extra_end)
             if lat_extra_end > lat_extra_st:
                 band_vals = np.zeros((band_len, np.shape(data_in[lat_extra_st:lat_extra_end, :])[1]))
@@ -416,8 +418,8 @@ def run_tracking(
                 band_vals = np.zeros((band_len, np.shape(data_in[lat_extra_end:lat_extra_st, :])[1]))
                 test_vals = np.zeros((band_len, np.shape(data_in[lat_extra_end:lat_extra_st, :])[1]))
             for i in range(band_len):  # We will have six bands
-                lat_avg_end, _ = find_nearest(lat, 15 + i)  # We only want to average the cells in a 5-20N range
-                lat_avg_st, _ = find_nearest(lat, 5 + i)
+                lat_avg_end, _ = find_nearest(lat, lat_avg_bounds[-1] + i)  # We only want to average the cells in a 5-20N range
+                lat_avg_st, _ = find_nearest(lat, at_avg_bounds[0] + i)
 
                 if lat_avg_end > lat_avg_st:
                     data_slice = data_in[lat_avg_st:lat_avg_end, :]
@@ -444,8 +446,8 @@ def run_tracking(
             # print(lat_center)
 
         else:
-            lat_avg_st, _ = find_nearest(lat, 15)  # We only want to average the cells in a 5-20N range
-            lat_avg_end, _ = find_nearest(lat, 5)
+            lat_avg_st, _ = find_nearest(lat, lat_avg_bounds[-1])  # We only want to average the cells in a 5-20N range
+            lat_avg_end, _ = find_nearest(lat, lat_avg_bounds[0])
 
             data_slice = data_in[lat_avg_st:lat_avg_end, :]
             data_mean = np.nanmean(data_slice, axis=0)
@@ -472,16 +474,16 @@ def run_tracking(
             cont_max[np.isnan(cont_max)] = 0
 
         # Filter out maximas such that they have to both be positive and greater than a given threshold
-        init_max = init_max[lon[init_i] < 40]
-        init_i = init_i[lon[init_i] < 40]
-        init_max = init_max[lon[init_i] > -100]
-        init_i = init_i[lon[init_i] > -100]
+        init_max = init_max[lon[init_i] < left_right_bounds[-1]]
+        init_i = init_i[lon[init_i] < left_right_bounds[-1]]
+        init_max = init_max[lon[init_i] > left_right_bounds[0]]
+        init_i = init_i[lon[init_i] > left_right_bounds[0]]
         init_i = init_i[init_max >= thres_init]
 
-        cont_max = cont_max[lon[cont_i] < 40]
-        cont_i = cont_i[lon[cont_i] < 40]
-        cont_max = cont_max[lon[cont_i] > -100]
-        cont_i = cont_i[lon[cont_i] > -100]
+        cont_max = cont_max[lon[cont_i] < left_right_bounds[-1]]
+        cont_i = cont_i[lon[cont_i] < left_right_bounds[-1]]
+        cont_max = cont_max[lon[cont_i] > left_right_bounds[0]]
+        cont_i = cont_i[lon[cont_i] > left_right_bounds[0]]
         cont_i = cont_i[cont_max >= thres_cont]
 
         # Now filter "initial" AEWs such that they have to have a longitude greater than 17W (the Africa land cutoff)
