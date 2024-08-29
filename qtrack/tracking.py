@@ -419,7 +419,7 @@ def run_tracking(
                 test_vals = np.zeros((band_len, np.shape(data_in[lat_extra_end:lat_extra_st, :])[1]))
             for i in range(band_len):  # We will have six bands
                 lat_avg_end, _ = find_nearest(lat, lat_avg_bounds[-1] + i)  # We only want to average the cells in a 5-20N range
-                lat_avg_st, _ = find_nearest(lat, at_avg_bounds[0] + i)
+                lat_avg_st, _ = find_nearest(lat, lat_avg_bounds[0] + i)
 
                 if lat_avg_end > lat_avg_st:
                     data_slice = data_in[lat_avg_st:lat_avg_end, :]
