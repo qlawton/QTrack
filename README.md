@@ -1,5 +1,5 @@
 # QTrack: An African Easterly Wave Tracker
-**Version: 0.0.2**
+**Version: 0.0.3**
 
 The AEW tracker was developed by **Quinton Lawton**, currently affiliated with the NSF National Center for Atmospheric Research (NSF NCAR). This python module was developed with the support of **Zachary Moon** (NOAA ARL/Texas A&M University) and **Kelly Núñez Ocasio** (Texas A&M University).  
 
@@ -92,11 +92,13 @@ This step computes the CV and takes the gridpoint averages. It is slow. **Howeve
 
 This step runs the AEW tracker on the computed CV output from the previous steps. It is fairly quick to run.
 
-*`qtrack.tracking.run_tracking(input_file="radial_avg_curv_vort.nc", save_file="AEW_tracks_raw.nc", initiation_bounds=(-35, 40), radius_used=600, threshold_initial=2e-6, threshold_continue=1e-7, threshold_continue_extrap=1e-6, extrap_day_limit=3, extrap_dist=700, extrap_dist_carib=500, extrap_latitude_max=50, extrap_latitude_min=5, extrap_longitude_start=-20, extrap_latitude_start=20, carib_longitude_start=-60, AEW_day_remove=2, centroid_radius=600, spatial_res=1, temporal_res=6, run_animation=True, speed_limit_in=True)`*
+*`qtrack.tracking.run_tracking(input_file="radial_avg_curv_vort.nc", save_file="AEW_tracks_raw.nc", initiation_bounds=(-35, 40), lat_avg_bounds=(5, 15), left_right_bounds=(-180, 40), radius_used=600, threshold_initial=2e-6, threshold_continue=1e-7, threshold_continue_extrap=1e-6, extrap_day_limit=3, extrap_dist=700, extrap_dist_carib=500, extrap_latitude_max=50, extrap_latitude_min=5, extrap_longitude_start=-20, extrap_latitude_start=20, carib_longitude_start=-60, AEW_day_remove=2, centroid_radius=600, spatial_res=1, temporal_res=6, run_animation=True, speed_limit_in=True)`*
 
 - **input_file (Default: "radial_avg_curv_vort.nc")**: name of input curvature vorticity file.
 - **save_file (Default: "AEW_tracks_raw.nc")**: name of raw AEW output file to be saved.
-- **initiation_bounds (Default: (-35, 40)): Longitudes for which the tracker will allow new AEWs to be initiated, from west to east.
+- **initiation_bounds (Default: (-35, 40))**: Longitudes for which the tracker will allow new AEWs to be initiated, from west to east.
+- **lat_avg_bounds (Default: (5, 15))**: The first latitude "band" used for the meridional CV averaging step over land. 5 bands in total will be computed, the maximum 5 degrees latitude poleward of those definied here.
+- **left_right_bounds (Default: (-180, 40))**: The longitudes for which the meridional averaging step will proceed. Does not impact the extrapolation step used when AEWs have existed long enough over the ocean.
 - **radius used (Default: 600)**: Averaging radius used in previous CV calculation step.
 - **threshold_initial (Default: 2e-6)**: CV threshold (s-1) for initiating new AEW event.
 - **threshold_continue (Default: 1e-7)**: CV threshold (s-1) for continued tracking of AEWs over land.
@@ -114,7 +116,7 @@ This step runs the AEW tracker on the computed CV output from the previous steps
 - **spatial_res (Default: 1)**: Spatial resolution (degrees) of the input data.
 - **temporal_res (Default: 6)**: Temporal resolution (hours) of the input data.
 - **run_animation (Default: True)**: DEPRECATED, NO ANIMATION IS GENERATED.
-- **spped_limit_in (Default: True)**: Boolean, determines if a AEW "speed limit" is incorporated during tracking to prevent erroneously fast, slow, or backwards tracks.
+- **speed_limit_in (Default: True)**: Boolean, determines if a AEW "speed limit" is incorporated during tracking to prevent erroneously fast, slow, or backwards tracks.
 
 ## **Post-Processing of AEW Tracks** `qtrack.tracking.run_postprocessing`
 
