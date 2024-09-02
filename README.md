@@ -1,5 +1,5 @@
 # QTrack: An African Easterly Wave Tracker
-**Version: 0.0.2**
+**Version: 0.0.3**
 
 The AEW tracker was developed by **Quinton Lawton**, currently affiliated with the NSF National Center for Atmospheric Research (NSF NCAR). This python module was developed with the support of **Zachary Moon** (NOAA ARL/Texas A&M University) and **Kelly Núñez Ocasio** (Texas A&M University).  
 
@@ -97,8 +97,8 @@ This step runs the AEW tracker on the computed CV output from the previous steps
 - **input_file (Default: "radial_avg_curv_vort.nc")**: name of input curvature vorticity file.
 - **save_file (Default: "AEW_tracks_raw.nc")**: name of raw AEW output file to be saved.
 - **initiation_bounds (Default: (-35, 40))**: Longitudes for which the tracker will allow new AEWs to be initiated, from west to east.
-- **lat_avg_bounds (Default: (5, 15))**: The first latitude "band" used for the meridional CV averaging step over land. 5 bands in total will be computed, the maximum 5 degrees latitude poleward of those definied here. 
-- **left_right_bounds (Default: (-180, 40))**: The longitudes for which the meridional averaging step will proceed. Does not impact the extrapolation step used when AEWs have existed long enough over the ocean. 
+- **lat_avg_bounds (Default: (5, 15))**: The first latitude "band" used for the meridional CV averaging step over land. 5 bands in total will be computed, the maximum 5 degrees latitude poleward of those definied here.
+- **left_right_bounds (Default: (-180, 40))**: The longitudes for which the meridional averaging step will proceed. Does not impact the extrapolation step used when AEWs have existed long enough over the ocean.
 - **radius used (Default: 600)**: Averaging radius used in previous CV calculation step.
 - **threshold_initial (Default: 2e-6)**: CV threshold (s-1) for initiating new AEW event.
 - **threshold_continue (Default: 1e-7)**: CV threshold (s-1) for continued tracking of AEWs over land.
