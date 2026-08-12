@@ -1,6 +1,6 @@
 from . import geo
 from .core import lat_buffer_rows, lon_buffer_cols
-from .regions import resolve_regions
+from .regions import region_for, resolve_regions
 
 
 def run_tracking(
@@ -151,8 +151,9 @@ def run_tracking(
     extra_dist3 = extrap_dist  # If running on skipped point, distance (km) extrapolated center can be from timestep 3 back or otherwise excluded (default: 1000km)
 
     extra_distance_60 = extrap_dist_carib  # Distance (km) extrapolated center can be from last timestep, at or west of transition longitude (default, 500km)
-    extra_dist2_60 = extrap_dist  # Same as before, but west of transition longitude (default: 1000km)
-    extra_dist3_60 = extrap_dist  # Same as before, but west of transition longitude (default: 1000km)
+    # (extra_dist2_60 / extra_dist3_60 used to exist here but were both extrap_dist,
+    #  i.e. identical to extra_dist2 / extra_dist3, so the branches selecting them
+    #  could never change anything. Per-basin skip distances belong in the region table.)
 
     lat_max = extrap_latitude_max  # The maximum latitude tracker will run extrapolation to (default: 50)
     extra_lat_bottom = extrap_latitude_min  # The minimum latitude tracker will run extrapolation on, otherwise defaults to other method (default: 5)
@@ -717,10 +718,10 @@ def run_tracking(
         """Right now, we want centers to be within a distance of the time step.
 
         Forward bias prevents extreme cases of "back_building" by limiting back_lon search to half the forward distance."""
-        if lon_in <= lon_old:  # IF true, then the wave is moving the correct direction
-            fwd = True
-        else:
-            fwd = False
+        # "Correct direction" means westward by the shortest path around the globe.
+        # The old raw ``lon_in <= lon_old`` read a wave stepping from 179.5W to
+        # 179.5E -- one degree west -- as a 359 degree jump to the east.
+        fwd = geo.is_westward(lon_in, lon_old)
         distance = haversine(lon_in, lat_in, lon_old, lat_old)
         # print(distance)
         if distance <= step:
@@ -1104,22 +1105,23 @@ def run_tracking(
                     if AEW_lat[existing, (slc_num - 1)] <= extra_lat_bottom:
                         continue
 
-                    if len(AEW_lon_slc[~np.isnan(AEW_lon_slc)]) >= extrapolate_time and AEW_lon[existing, (slc_num - 1)] <= extra_lon and AEW_lat[existing, (slc_num - 1)] <= lat_max:  # If track is long enough to do extrapolation, over ocean
+                    prev_region = region_for(AEW_lon[existing, (slc_num - 1)], region_table)
+                    if len(AEW_lon_slc[~np.isnan(AEW_lon_slc)]) >= extrapolate_time and prev_region.extrapolate and AEW_lat[existing, (slc_num - 1)] <= lat_max:  # If track is long enough to do extrapolation, over ocean
                         # print(AEW_lon_slc[slc_num-1], AEW_lon[existing, slc_num-1])
                         # DO LINEAR EXTRAPOLATION BASED ON THE LINEAR FIT FOR LAST 5 TIMESTEPS
 
-                        if AEW_lon[existing, (slc_num - 1)] <= extra_transition:
-                            extra_it = extra_it_60
-                        else:
-                            extra_it = extra_it_20
+                        extra_it = prev_region.extra_it
 
-                        data_lon = AEW_lon_slc[~np.isnan(AEW_lon_slc)][-extra_it::].reshape(-1, 1)
+                        # Fit on an unwrapped copy: a track that has crossed the seam
+                        # would otherwise show a 360 degree step and the fitted slope
+                        # would fling the guess to the far side of the globe.
+                        data_lon = geo.unwrap_lon(AEW_lon_slc[~np.isnan(AEW_lon_slc)][-extra_it::]).reshape(-1, 1)
                         x = np.arange(len(data_lon)).reshape(-1, 1)
                         x_new = np.array([len(data_lon)])
                         x_new = x_new.reshape(-1, 1)
 
                         model = LinearRegression().fit(x, data_lon)
-                        lon_guess_extra = data_lon[-1] + model.coef_
+                        lon_guess_extra = geo.wrap180(data_lon[-1] + model.coef_)
 
                         data_lat = AEW_lat_slc[~np.isnan(AEW_lon_slc)][-extra_it::].reshape(-1, 1)
                         x2 = np.arange(len(data_lat)).reshape(-1, 1)
@@ -1129,17 +1131,13 @@ def run_tracking(
                         model2 = LinearRegression().fit(x2, data_lat)
                         lat_guess_extra = data_lat[-1] + model2.coef_
 
-                        lon_guess_i, n = find_nearest(lon, lon_guess_extra)
+                        lon_guess_i, n = geo.find_nearest_lon(lon, lon_guess_extra)
                         lat_guess_i, n = find_nearest(lat, lat_guess_extra)
                         # print(lon_guess_extra, lat_guess_extra)
 
                         # RUN A CENTROID FINDER FOR THE NEXT TIME STEP
-                        if AEW_lon[existing, (slc_num - 1)] <= extra_transition:
-                            extra_dist = extra_distance_60
-                            centroid_weight = centroid_rad_extra_60
-                        else:
-                            extra_dist = extra_distance
-                            centroid_weight = centroid_rad_extra
+                        extra_dist = prev_region.extra_dist
+                        centroid_weight = prev_region.centroid_rad_extra
 
                         try:
                             lont_off, latt_off, pvout_off, pvmask_off, lon_extra_out, lat_extra_out = general_centroid(lon, lat, curv_vort_data, centroid_weight, lat_guess_i, lon_guess_i, centroid_it_extra)
@@ -1147,7 +1145,7 @@ def run_tracking(
                             print("Something went wrong with centroid, possibly out of bounds")
                             continue
                         # FIND THE CURVATURE VORTICITY VALUE AT THIS NEXT CENTER
-                        lon_extra_posi, n = find_nearest(lon, lon_extra_out)
+                        lon_extra_posi, n = geo.find_nearest_lon(lon, lon_extra_out)
                         lat_extra_posi, n = find_nearest(lat, lat_extra_out)
 
                         curv_extra = curv_vort_data[lat_extra_posi, lon_extra_posi]
@@ -1159,27 +1157,26 @@ def run_tracking(
                         if win3_extra and curv_extra >= extrapolate_thresh:
                             if EXTRAPOLATE_FORWARD:
                                 backward_dist = haversine(lon_extra_out, lat_extra_out, AEW_lon[existing, (slc_num - 1)], lat_extra_out)
-                                curv_lon_extra, n = find_nearest(lon, AEW_lon[existing, slc_num - 1])
+                                curv_lon_extra, n = geo.find_nearest_lon(lon, AEW_lon[existing, slc_num - 1])
                                 curv_lat_extra, n = find_nearest(lat, AEW_lat[existing, slc_num - 1])
                                 curv_val_extra = curv_vort_data[curv_lat_extra, curv_lon_extra]
-                                if lon_extra_out >= AEW_lon[existing, (slc_num - 1)] and backward_dist >= extra_backcut and AEW_lat[existing, (slc_num - 1)] <= extra_lat_start and curv_val_extra < speed_curv_thresh:
+                                moved_east = geo.lon_delta(lon_extra_out, AEW_lon[existing, (slc_num - 1)]) >= 0
+                                if moved_east and backward_dist >= extra_backcut and AEW_lat[existing, (slc_num - 1)] <= extra_lat_start and curv_val_extra < speed_curv_thresh:
                                     continue
                             AEW_lon[existing, slc_num] = lon_extra_out
                             AEW_lat[existing, slc_num] = lat_extra_out
                     elif EXTRAPOLATE_SKIP:
-                        if len(AEW_lon_slc[~np.isnan(AEW_lon_slc)]) >= extrapolate_time and AEW_lon[existing, (slc_num - 2)] <= extra_lon and AEW_lat[existing, (slc_num - 2)] <= lat_max:  # If track is long enough to do extrapolation, over ocean
-                            if AEW_lon[existing, (slc_num - 2)] <= extra_transition:
-                                extra_it = extra_it_60
-                            else:
-                                extra_it = extra_it_20
+                        prev2_region = region_for(AEW_lon[existing, (slc_num - 2)], region_table)
+                        if len(AEW_lon_slc[~np.isnan(AEW_lon_slc)]) >= extrapolate_time and prev2_region.extrapolate and AEW_lat[existing, (slc_num - 2)] <= lat_max:  # If track is long enough to do extrapolation, over ocean
+                            extra_it = prev2_region.extra_it
 
-                            data_lon = AEW_lon_slc[~np.isnan(AEW_lon_slc)][-(extra_it + 1) : :].reshape(-1, 1)
+                            data_lon = geo.unwrap_lon(AEW_lon_slc[~np.isnan(AEW_lon_slc)][-(extra_it + 1) : :]).reshape(-1, 1)
                             x = np.arange(len(data_lon)).reshape(-1, 1)
                             x_new = np.array([len(data_lon)])
                             x_new = x_new.reshape(-1, 1)
 
                             model = LinearRegression().fit(x, data_lon)
-                            lon_guess_extra = data_lon[-1] + 2 * model.coef_
+                            lon_guess_extra = geo.wrap180(data_lon[-1] + 2 * model.coef_)
 
                             data_lat = AEW_lat_slc[~np.isnan(AEW_lon_slc)][-(extra_it + 1) : :].reshape(-1, 1)
                             x2 = np.arange(len(data_lat)).reshape(-1, 1)
@@ -1189,56 +1186,53 @@ def run_tracking(
                             model2 = LinearRegression().fit(x2, data_lat)
                             lat_guess_extra = data_lat[-1] + 2 * model2.coef_
 
-                            lon_guess_i, n = find_nearest(lon, lon_guess_extra)
+                            lon_guess_i, n = geo.find_nearest_lon(lon, lon_guess_extra)
                             lat_guess_i, n = find_nearest(lat, lat_guess_extra)
                             # print(lon_guess_extra, lat_guess_extra)
 
                             # RUN A CENTROID FINDER FOR THE NEXT TIME STEP
-                            if AEW_lon[existing, (slc_num - 2)] <= extra_transition:
-                                extra_dist = extra_distance_60
-                                centroid_weight = centroid_rad_extra_60
-                            else:
-                                extra_dist = extra_distance
-                                centroid_weight = centroid_rad_extra
+                            extra_dist = prev2_region.extra_dist
+                            centroid_weight = prev2_region.centroid_rad_extra
                             try:
                                 lont_off, latt_off, pvout_off, pvmask_off, lon_extra_out, lat_extra_out = general_centroid(lon, lat, curv_vort_data, centroid_weight, lat_guess_i, lon_guess_i, centroid_it_extra)
                             except Exception:
                                 print("Something went wrong with centroid, possibly out of bounds")
                                 continue
                             # FIND THE CURVATURE VORTICITY VALUE AT THIS NEXT CENTER
-                            lon_extra_posi, n = find_nearest(lon, lon_extra_out)
+                            lon_extra_posi, n = geo.find_nearest_lon(lon, lon_extra_out)
                             lat_extra_posi, n = find_nearest(lat, lat_extra_out)
 
                             curv_extra = curv_vort_data[lat_extra_posi, lon_extra_posi]
 
-                            if lon_guess_extra <= -60:
-                                extra_dist2_final = extra_dist2_60
-                            else:
-                                extra_dist2_final = extra_dist2
+                            # There used to be a "lon_guess_extra <= -60" branch choosing
+                            # extra_dist2_60 here, but both it and extra_dist2 are extrap_dist,
+                            # so the branch could never change anything. Dropped rather than
+                            # made wrap-safe; per-basin skip distances belong in the region table.
+                            extra_dist2_final = extra_dist2
                             # FIND DISTANCE
                             win3_extra, distance3_extra, fwd_extra = within_distance_direct(lon, lat, lon_extra_out, lat_extra_out, lon_guess_extra, lat_guess_extra, extra_dist2_final)
                             # replace with "guess_lon_extra", "guess_lat_extra" for difference
                             center_distance = haversine(lon_extra_out, lat_extra_out, AEW_lon[existing, (slc_num - 2)], AEW_lat[existing, (slc_num - 2)])
 
-                            if win3_extra and curv_extra >= extrapolate_thresh and center_distance <= extra_dist2_final and lon_extra_out <= AEW_lon[existing, (slc_num - 3)]:
+                            if win3_extra and curv_extra >= extrapolate_thresh and center_distance <= extra_dist2_final and geo.is_westward(lon_extra_out, AEW_lon[existing, (slc_num - 3)]):
                                 # if curv_extra >=extrapolate_thresh:
                                 # print('Boom')
                                 AEW_lon[existing, slc_num] = lon_extra_out
                                 AEW_lat[existing, slc_num] = lat_extra_out
 
-                        elif len(AEW_lon_slc[~np.isnan(AEW_lon_slc)]) >= extrapolate_time and AEW_lon[existing, (slc_num - 3)] <= extra_lon and AEW_lat[existing, (slc_num - 3)] <= lat_max:  # If track is long enough to do extrapolation, over ocean
-                            if AEW_lon[existing, (slc_num - 2)] <= extra_transition:
-                                extra_it = extra_it_60
-                            else:
-                                extra_it = extra_it_20
+                        elif len(AEW_lon_slc[~np.isnan(AEW_lon_slc)]) >= extrapolate_time and region_for(AEW_lon[existing, (slc_num - 3)], region_table).extrapolate and AEW_lat[existing, (slc_num - 3)] <= lat_max:
+                            # (track long enough to extrapolate, and over the ocean three steps back)
+                            # Note the asymmetry, preserved from the original: the gate looks
+                            # three steps back, but the settings are taken from two steps back.
+                            extra_it = prev2_region.extra_it
 
-                            data_lon = AEW_lon_slc[~np.isnan(AEW_lon_slc)][-(extra_it + 1) : :].reshape(-1, 1)
+                            data_lon = geo.unwrap_lon(AEW_lon_slc[~np.isnan(AEW_lon_slc)][-(extra_it + 1) : :]).reshape(-1, 1)
                             x = np.arange(len(data_lon)).reshape(-1, 1)
                             x_new = np.array([len(data_lon)])
                             x_new = x_new.reshape(-1, 1)
 
                             model = LinearRegression().fit(x, data_lon)
-                            lon_guess_extra = data_lon[-1] + 3 * model.coef_
+                            lon_guess_extra = geo.wrap180(data_lon[-1] + 3 * model.coef_)
 
                             data_lat = AEW_lat_slc[~np.isnan(AEW_lon_slc)][-(extra_it + 1) : :].reshape(-1, 1)
                             x2 = np.arange(len(data_lat)).reshape(-1, 1)
@@ -1248,16 +1242,12 @@ def run_tracking(
                             model2 = LinearRegression().fit(x2, data_lat)
                             lat_guess_extra = data_lat[-1] + 3 * model2.coef_
 
-                            lon_guess_i, n = find_nearest(lon, lon_guess_extra)
+                            lon_guess_i, n = geo.find_nearest_lon(lon, lon_guess_extra)
                             lat_guess_i, n = find_nearest(lat, lat_guess_extra)
                             # print(lon_guess_extra, lat_guess_extra)
 
-                            if AEW_lon[existing, (slc_num - 1)] <= extra_transition:
-                                extra_dist = extra_distance_60
-                                centroid_weight = centroid_rad_extra_60
-                            else:
-                                extra_dist = extra_distance
-                                centroid_weight = centroid_rad_extra
+                            extra_dist = prev_region.extra_dist
+                            centroid_weight = prev_region.centroid_rad_extra
                             # RUN A CENTROID FINDER FOR THE NEXT TIME STEP
                             try:
                                 lont_off, latt_off, pvout_off, pvmask_off, lon_extra_out, lat_extra_out = general_centroid(lon, lat, curv_vort_data, centroid_weight, lat_guess_i, lon_guess_i, centroid_it_extra)
@@ -1265,28 +1255,29 @@ def run_tracking(
                                 print("Something went wrong with centroid, possibly out of bounds")
                                 continue
                             # FIND THE CURVATURE VORTICITY VALUE AT THIS NEXT CENTER
-                            lon_extra_posi, n = find_nearest(lon, lon_extra_out)
+                            lon_extra_posi, n = geo.find_nearest_lon(lon, lon_extra_out)
                             lat_extra_posi, n = find_nearest(lat, lat_extra_out)
 
                             curv_extra = curv_vort_data[lat_extra_posi, lon_extra_posi]
 
-                            if lon_guess_extra <= -60:
-                                extra_dist3_final = extra_dist3_60
-                            else:
-                                extra_dist3_final = extra_dist3
+                            # As above: extra_dist3_60 and extra_dist3 are both extrap_dist,
+                            # so the "lon_guess_extra <= -60" branch here was inert.
+                            extra_dist3_final = extra_dist3
 
                             # FIND DISTANCE
                             win3_extra, distance3_extra, fwd_extra = within_distance_direct(lon, lat, lon_extra_out, lat_extra_out, lon_guess_extra, lat_guess_extra, extra_dist3_final)
                             # replace with "guess_lon_extra", "guess_lat_extra" for difference
                             center_distance = haversine(lon_extra_out, lat_extra_out, AEW_lon[existing, (slc_num - 3)], AEW_lat[existing, (slc_num - 3)])
 
-                            if win3_extra and curv_extra >= extrapolate_thresh and center_distance <= extra_dist3_final and lon_extra_out <= AEW_lon[existing, (slc_num - 3)]:
+                            if win3_extra and curv_extra >= extrapolate_thresh and center_distance <= extra_dist3_final and geo.is_westward(lon_extra_out, AEW_lon[existing, (slc_num - 3)]):
                                 # if curv_extra >=extrapolate_thresh:
                                 # print('Boom')
                                 AEW_lon[existing, slc_num] = lon_extra_out
                                 AEW_lat[existing, slc_num] = lat_extra_out
-                    # Now if it still doesn't append... prevent the code from actually doing the other method
-                    if ~np.isnan(AEW_lon[existing, slc_num]) and existing not in dont_extra_list and AEW_lon[existing, slc_num] < -60:
+                    # Now if it still doesn't append... prevent the code from actually doing the other method.
+                    # Regions flagged lock_extrapolation (classically the Caribbean, west of 60W)
+                    # stop falling back to the banding method once a wave has been extrapolated there.
+                    if ~np.isnan(AEW_lon[existing, slc_num]) and existing not in dont_extra_list and region_for(AEW_lon[existing, slc_num], region_table).lock_extrapolation:
                         dont_extra_list.append(existing)
 
             if cleanup:  # Cleanup is optional, relict of early tests. This only runs for initiation points.
@@ -1415,11 +1406,11 @@ def run_tracking(
                     if any(temp_dist_list3):  # If there are any in the 1 timestep list
                         min_i = np.argmin(temp_dist_list3)
                         # Test to see if latitudinal jump occurs
-                        if np.abs(temp_lat_arr3[min_i] - AEW_lat[existing, (slc_num - 1)]) >= land_lat_limit:
+                        if np.abs(temp_lat_arr3[min_i] - AEW_lat[existing, (slc_num - 1)]) >= region_for(AEW_lon[existing, (slc_num - 1)], region_table).lat_jump_limit:
                             continue
 
                         # Get some curvature value characteristics for later
-                        curv_lon_back, _ = find_nearest(lon, temp_lon_list3[min_i])
+                        curv_lon_back, _ = geo.find_nearest_lon(lon, temp_lon_list3[min_i])
                         curv_lat_back, _ = find_nearest(lat, temp_lat_list3[min_i])
 
                         curv_val_back = curv_vort_data[curv_lat_back, curv_lon_back]
@@ -1437,12 +1428,9 @@ def run_tracking(
                                     AEW_lat[existing, slc_num] = new_temp_lat_list[min_adj_i]
                                     continue
                         ##Different backward cutoffs over ocean vs. land
-                        if AEW_lon[existing, (slc_num - 1)] <= -17:  # If over the ocean
-                            back_cutoff = back_cutoff_ocean
-                            back_cutoff_long = back_cutoff_long_ocean
-                        else:
-                            back_cutoff = back_cutoff_land
-                            back_cutoff_long = back_cutoff_long_land
+                        step_region = region_for(AEW_lon[existing, (slc_num - 1)], region_table)
+                        back_cutoff = step_region.back_cutoff
+                        back_cutoff_long = step_region.back_cutoff_long
                         fwd = temp_fwd_list3[min_i]
                         if force_forward:
                             if not fwd:
@@ -1461,14 +1449,11 @@ def run_tracking(
 
                     elif any(temp_dist_list6) and np.isnan(AEW_lon[existing, slc_num - 1]):  # If not, are there any on the 2 timestep list?
                         min_i = np.argmin(temp_dist_list6)
-                        if AEW_lon[existing, (slc_num - 2)] <= -17:  # If over the ocean
-                            back_cutoff = back_cutoff_ocean
-                            back_cutoff_long = back_cutoff_long_ocean
-                        else:
-                            back_cutoff = back_cutoff_land
-                            back_cutoff_long = back_cutoff_long_land
-                            # TESTING CUT OUT BELOW IF TOO RESTRICTIVE
-                        if np.abs(temp_lat_arr6[min_i] - AEW_lat[existing, (slc_num - 2)]) >= land_lat_limit * 2:
+                        step_region = region_for(AEW_lon[existing, (slc_num - 2)], region_table)
+                        back_cutoff = step_region.back_cutoff
+                        back_cutoff_long = step_region.back_cutoff_long
+                        # TESTING CUT OUT BELOW IF TOO RESTRICTIVE
+                        if np.abs(temp_lat_arr6[min_i] - AEW_lat[existing, (slc_num - 2)]) >= step_region.lat_jump_limit * 2:
                             continue
                         fwd = temp_fwd_list6[min_i]
                         if force_forward:
@@ -1492,17 +1477,15 @@ def run_tracking(
                 if np.isnan(AEW_lon_slc[slc_num]):
                     continue
 
-                curv_lon, _ = find_nearest(lon, AEW_lon_slc[slc_num])
+                curv_lon, _ = geo.find_nearest_lon(lon, AEW_lon_slc[slc_num])
                 curv_lat, _ = find_nearest(lat, AEW_lat_slc[slc_num])
 
                 curv_val = curv_vort_data[curv_lat, curv_lon]
 
-                if (
-                    (np.abs(AEW_lon_slc[slc_num] - AEW_lon_slc[slc_num - stuck_thresh]) <= stuck_lon or (AEW_lon_slc[slc_num] - AEW_lon_slc[slc_num - stuck_thresh]) > stuck_lon)
-                    and AEW_lon_slc[slc_num] <= extra_lon
-                    and AEW_lat_slc[slc_num] < extra_lat_start
-                    and curv_val <= speed_curv_thresh
-                ):
+                # Zonal displacement over the stuck window, by the shortest path.
+                stuck_shift = geo.lon_delta(AEW_lon_slc[slc_num], AEW_lon_slc[slc_num - stuck_thresh])
+
+                if (np.abs(stuck_shift) <= stuck_lon or stuck_shift > stuck_lon) and region_for(AEW_lon_slc[slc_num], region_table).apply_speed_limit and AEW_lat_slc[slc_num] < extra_lat_start and curv_val <= speed_curv_thresh:
                     AEW_lon[existing, slc_num] = np.nan
                     AEW_lat[existing, slc_num] = np.nan
                     AEW_lon[existing, (slc_num - 1)] = np.nan
