@@ -258,6 +258,16 @@ def prep_data(data_in, cut_lev_val=700, data_out="prepped_data_for_tracking.nc")
         warnings.warn("Please double check your data to ensure you have the correct coordinate system.")
         data_xr.coords["longitude"] = (data_xr.coords["longitude"] + 180) % 360 - 180
         data_xr = data_xr.sortby(data_xr.longitude)
+
+    ### Check the longitude axis is either global or one contiguous block. A regional
+    ### domain that straddles 180 (say 170E to 160W) is split by the conversion above
+    ### and then reassembled by sortby into a physically discontiguous axis, which the
+    ### tracker cannot detect. A global domain has no such gap once wrapped.
+    lon_vals = data_xr["longitude"].values
+    if lon_vals.size > 1:
+        gaps = np.diff(lon_vals)
+        if (gaps > 1.5 * np.median(gaps)).any():
+            warnings.warn("WARNING: LONGITUDE AXIS IS NOT CONTIGUOUS. This usually means a regional domain straddling 180 was reordered into a discontinuous axis. Supply global data, or shift the domain off the dateline.")
     ### FINALLY, NEED TO CUT TIME TO EVERY 6 HOURS
     data_xr = check_and_resample(data_xr)
 

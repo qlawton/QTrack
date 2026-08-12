@@ -4,12 +4,15 @@ QTrack - African Easterly Wave Tracking in Model and Reanalysis Data
 
 __version__ = "0.0.4"
 
+from . import geo, regions
 from .core import COMPUTE_CURV_VORT_NON_DIV_UPDATE, download_examples, prep_data
 
 __all__ = [
     "COMPUTE_CURV_VORT_NON_DIV_UPDATE",
     "download_examples",
     "prep_data",
+    "geo",
+    "regions",
     #
     "season",
     "AEW",

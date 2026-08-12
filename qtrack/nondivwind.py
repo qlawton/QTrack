@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 
 
-def compute_nondiv_wind(input_file, output_file="wind_700_helmholtz.nc"):
+def compute_nondiv_wind(input_file, output_file="wind_700_helmholtz.nc", lon_bounds=None, lat_bounds=None):
     """
     Compute non-divergent component of wind for the 700hPa level. Note that this requires a full global grid, as it utilizes spherical harmonics (windspharm: doi.org/10.5334/jors.129). Not required for tracking, and can be skipped.
 
+    Parameters
+    ----------
+    lon_bounds, lat_bounds : (min, max), optional
+        Crop the output to these bounds. Both default to None, i.e. keep the full
+        global grid the spherical harmonics were computed on. This used to be a
+        hard-coded crop to 120W-60E and 20S-60N, which discarded the entire
+        Pacific and Indian Ocean and so made global tracking impossible.
     """
 
     import matplotlib as mpl
@@ -69,18 +76,23 @@ def compute_nondiv_wind(input_file, output_file="wind_700_helmholtz.nc"):
         # vpsi = recover_data(vpsi, vwnd_info)
         # del(uwnd_info, vwnd_info, w, uwnd, vwnd)
 
-        # CUT DOWN DATA TO MANAGABLE SIZE
-        lon_st, n = find_nearest(lons, -120)
-        lon_end, n = find_nearest(lons, 60)
-        lat_st, n = find_nearest(lats, 60)
-        lat_end, n = find_nearest(lats, -20)
-
-        lons = lons[lon_st:lon_end]
-        lats = lats[lat_st:lat_end]
-        upsi = upsi[:, lat_st:lat_end, lon_st:lon_end]
-        vpsi = vpsi[:, lat_st:lat_end, lon_st:lon_end]
-        # upsi = upsi[:,lat_st:lat_end,lon_st:lon_end]
-        # vpsi = vpsi[:,lat_st:lat_end,lon_st:lon_end]
+        # OPTIONALLY CUT DOWN DATA TO A REGION OF INTEREST
+        # Note that cropping longitude leaves a non-periodic grid, which stops the
+        # tracker following waves past the crop edges. Leave both bounds at None
+        # (the default) for global tracking.
+        if lon_bounds is not None:
+            lon_st, n = find_nearest(lons, lon_bounds[0])
+            lon_end, n = find_nearest(lons, lon_bounds[-1])
+            lons = lons[lon_st:lon_end]
+            upsi = upsi[:, :, lon_st:lon_end]
+            vpsi = vpsi[:, :, lon_st:lon_end]
+        if lat_bounds is not None:
+            # lats run north to south here, so the max bound comes first
+            lat_st, n = find_nearest(lats, max(lat_bounds))
+            lat_end, n = find_nearest(lats, min(lat_bounds))
+            lats = lats[lat_st:lat_end]
+            upsi = upsi[:, lat_st:lat_end, :]
+            vpsi = vpsi[:, lat_st:lat_end, :]
 
         # %% WRITE NETCDF4
         # ------------------

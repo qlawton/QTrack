@@ -17,6 +17,22 @@ The AEW tracker uses an input file containing 700hPa zonal (u) and meridional (v
 
 More detailed information on the tracking, not provided in the Lawton et al. (2022) paper or here, can be found in an online technical guide here: https://osf.io/6hqy5
 
+### Global tracking
+If the input grid spans the globe, longitude is treated as periodic at every stage: the curvature vorticity radial average and its zonal gradient wrap, the local-maximum search wraps, the centroid is computed on a field rolled so the array seam is nowhere near the point of interest, and every direction test, distance, gap fill, smoothing pass and linear extrapolation uses the shortest way round rather than raw longitude subtraction. Easterly waves are therefore tracked continuously across the international dateline.
+
+Basin-dependent behaviour lives in a table of longitude windows (`qtrack.regions`) rather than in scalar longitude comparisons. Each window carries the settings that used to be gated on a threshold: the land/ocean backward-search cutoffs and meridional jump limit (previously `lon <= -17`), whether extrapolation and the forward speed limit apply (previously `lon <= -20`), and the extrapolation leash (previously `lon <= -60`). Windows are modular, so they may cross the dateline.
+
+The default table, `qtrack.regions.global_regions()`, keeps Africa through the Caribbean exactly as it has always been and applies general ocean settings everywhere else. Pass `regions="atlantic"` to `run_tracking` and `run_postprocessing` for the historical table, or build your own:
+
+~~~~
+from qtrack.regions import Region, global_regions
+
+my_regions = [Region(name="west_pacific", lon_range=(120, -170), extra_dist=900)] + global_regions()
+run_tracking(input_file="cv.nc", regions=my_regions, initiation_bounds=None)
+~~~~
+
+Note that a *regional* domain straddling 180 cannot be handled: converting it to the -180 to 180 convention and sorting produces a physically discontinuous axis. `prep_data` warns if it sees one. Supply global data instead.
+
 ### Important Note on Non-Divergent Wind Step
 Due to inconsistencies in the windspharm package, which computes the non-divergent wind using spherical harmonics, the non-divergent wind step is currently not included in the package. This step was largely superfluous and thus not including this step is is not anticipated to have any major negative impacts. Nevertheless, it could result in AEW tracks slightly differing from those produced with this step included, including the AEW tracks in the Lawton et al. (2022) AEW databases. We hope to include a non-divergent wind step in a future release.
 
@@ -52,7 +68,7 @@ from qtrack.tracking import run_postprocessing, run_tracking
 ~~~~
 
 ## Input Wind files
-**You need u and v winds on a 1x1 degree grid with 6-hourly temporal outputs**. This is the optimal resolution tested in Lawton et al. (2022), but it can be adjusted manually in the code if necessary to change. Furthermore, it is highly recommended that at least 10 days of data are included. The tracking needs a bit of spinup, so if you are running this on model output, it is recommended you append a few days to 1 week of analysis/reanalysis data prior to the first model timestep. Input data should geographically cover at least a portion of the African continent and/or Atlantic Ocean. Note that by default, the tracker does not initiate new waves west of 35W, but this can be adjusted in the tracking function.
+**You need u and v winds on a 1x1 degree grid with 6-hourly temporal outputs**. This is the optimal resolution tested in Lawton et al. (2022), but it can be adjusted manually in the code if necessary to change. Furthermore, it is highly recommended that at least 10 days of data are included. The tracking needs a bit of spinup, so if you are running this on model output, it is recommended you append a few days to 1 week of analysis/reanalysis data prior to the first model timestep. Input data should geographically cover at least a portion of the African continent and/or Atlantic Ocean; supply a full global grid to track waves around the world. Note that by default, the tracker does not initiate new waves west of 35W, but this can be adjusted in the tracking function (`initiation_bounds=None` initiates anywhere).
 
 A sample model data/reanalysis combination script is provided under `tools/wind_combine.py`
 
@@ -60,6 +76,8 @@ A sample model data/reanalysis combination script is provided under `tools/wind_
 Two different kinds of output files are produced, a netCDF file and a python pickle file (with AEWs saved as objects). It is recommended that you use netCDF if possible. However, if you need to use the pickle files for whatever reason, you will need to have the `AEW_module.py` script available locally when you open them.
 
 Details on the AEW objects and AEW_module.py are available here: https://osf.io/jnv5u
+
+Alongside `AEW_lon`, the netCDF output contains `AEW_lon_unwrapped`: the same track with 360 degree jumps removed, so a wave that crosses the dateline plots as a straight line on a Hovmoller. Its values may fall outside -180 to 180.
 
 # Essential Function Details
 
@@ -92,13 +110,14 @@ This step computes the CV and takes the gridpoint averages. It is slow. **Howeve
 
 This step runs the AEW tracker on the computed CV output from the previous steps. It is fairly quick to run.
 
-*`qtrack.tracking.run_tracking(input_file="radial_avg_curv_vort.nc", save_file="AEW_tracks_raw.nc", initiation_bounds=(-35, 40), lat_avg_bounds=(5, 15), left_right_bounds=(-180, 40), radius_used=600, threshold_initial=2e-6, threshold_continue=1e-7, threshold_continue_extrap=1e-6, extrap_day_limit=3, extrap_dist=700, extrap_dist_carib=500, extrap_latitude_max=50, extrap_latitude_min=5, extrap_longitude_start=-20, extrap_latitude_start=20, carib_longitude_start=-60, AEW_day_remove=2, centroid_radius=600, spatial_res=1, temporal_res=6, run_animation=True, speed_limit_in=True)`*
+*`qtrack.tracking.run_tracking(input_file="radial_avg_curv_vort.nc", save_file="AEW_tracks_raw.nc", initiation_bounds=(-35, 40), lat_avg_bounds=(5, 15), left_right_bounds=None, regions=None, radius_used=600, threshold_initial=2e-6, threshold_continue=1e-7, threshold_continue_extrap=1e-6, extrap_day_limit=3, extrap_dist=700, extrap_dist_carib=500, extrap_latitude_max=50, extrap_latitude_min=5, extrap_longitude_start=-20, extrap_latitude_start=20, carib_longitude_start=-60, AEW_day_remove=2, centroid_radius=600, spatial_res=1, temporal_res=6, run_animation=True, speed_limit_in=True)`*
 
 - **input_file (Default: "radial_avg_curv_vort.nc")**: name of input curvature vorticity file.
 - **save_file (Default: "AEW_tracks_raw.nc")**: name of raw AEW output file to be saved.
-- **initiation_bounds (Default: (-35, 40))**: Longitudes for which the tracker will allow new AEWs to be initiated, from west to east.
-- **lat_avg_bounds (Default: (5, 15))**: The first latitude "band" used for the meridional CV averaging step over land. 5 bands in total will be computed, the maximum 5 degrees latitude poleward of those definied here.
-- **left_right_bounds (Default: (-180, 40))**: The longitudes for which the meridional averaging step will proceed. Does not impact the extrapolation step used when AEWs have existed long enough over the ocean.
+- **initiation_bounds (Default: (-35, 40))**: Longitudes for which the tracker will allow new AEWs to be initiated, from west to east. The window is traversed eastward from the first value, so it may cross the dateline (e.g. `(150, -150)`). Also accepts a list of such windows, or `None` to initiate anywhere.
+- **lat_avg_bounds (Default: (5, 15))**: The first latitude "band" used for the meridional CV averaging step over land. 6 bands in total will be computed, the last 5 degrees latitude poleward of those defined here. The first-guess latitude for new waves is the centre of the winning band, derived from these bounds.
+- **left_right_bounds (Default: None)**: The longitudes for which the meridional averaging step will proceed. `None` means the whole globe. Same modular `(west, east)` convention and list support as `initiation_bounds`. Does not impact the extrapolation step used when AEWs have existed long enough over the ocean.
+- **regions (Default: None)**: Basin-dependent settings. `None` uses `qtrack.regions.global_regions()`, which keeps the Africa-through-Caribbean sector unchanged and applies general ocean settings elsewhere. `"atlantic"` selects the historical table; you may also pass your own list of `qtrack.regions.Region` records. The scalar arguments below (`extrap_longitude_start`, `carib_longitude_start`, `extrap_dist`, `extrap_dist_carib`) set the boundaries and settings of the built-in tables.
 - **radius used (Default: 600)**: Averaging radius used in previous CV calculation step.
 - **threshold_initial (Default: 2e-6)**: CV threshold (s-1) for initiating new AEW event.
 - **threshold_continue (Default: 1e-7)**: CV threshold (s-1) for continued tracking of AEWs over land.
@@ -122,7 +141,7 @@ This step runs the AEW tracker on the computed CV output from the previous steps
 
 This step computes the netCDF4 files and saves the data there. It also cleans up the tracked AEW data (remove duplicates, combine similar tracks, etc.). Importantly, there is a setting that eliminates AEWs that do not exist for the specified period. This can be adjusted within the script if necessary. There is also a feature to identify developing AEWs using HURDAT data (ONLY use this for reanalysis inputs), but this is buggy at the moment. This HURDAT step is why it is required that a year be input into this call, as this allows the code to select the correct year for TC tracks.
 
-*`qtrack.tracking.run_postprocessing(input_file="AEW_tracks_raw.nc", curv_data_file="radial_avg_curv_vort.nc", radius_used=600, AEW_day_remove=2, real_year_used="None", AEW_merge_dist=500, AEW_forward_connect_dist=700, AEW_backward_connect_dist=200, TC_merge_dist=500, TC_pairing=False, TC_pair_lat_max=25, remove_duplicates=True, hovmoller_save=True, object_data_save=True, netcdf_data_save=True, save_obj_file="AEW_tracks_post_processed.pkl", save_nc_file="AEW_tracks_post_processed.nc", hov_save_file="final_hovmoller.png", hov_name_prefix="", hov_AEW_lat_lim=25,hov_over_africa_color=True)`*
+*`qtrack.tracking.run_postprocessing(input_file="AEW_tracks_raw.nc", curv_data_file="radial_avg_curv_vort.nc", radius_used=600, AEW_day_remove=2, real_year_used="None", AEW_merge_dist=500, AEW_forward_connect_dist=700, AEW_backward_connect_dist=200, TC_merge_dist=500, TC_pairing=False, TC_pair_lat_max=25, remove_duplicates=True, hovmoller_save=True, object_data_save=True, netcdf_data_save=True, save_obj_file="AEW_tracks_post_processed.pkl", save_nc_file="AEW_tracks_post_processed.nc", hov_save_file="final_hovmoller.png", hov_name_prefix="", hov_AEW_lat_lim=25, hov_over_africa_color=True, hov_lon_limits=None, regions=None)`*
 
 - **input_file (Default: "AEW_tracks_raw.nc")**: path to input raw AEW file to be processed.
 - **curv_data_file (Default: "radial_avg_curv_vort.nc")**: path to CV data file from previous step, necessary to compute the AEW strength.
@@ -144,7 +163,9 @@ This step computes the netCDF4 files and saves the data there. It also cleans up
 - **hov_save_file (Default: "final_hovmoller.png")**: Name of output hovmoller, if saved.
 - **hov_name_prefix (Default: "")**: Name to be displayed in title of hovmoller plot.
 - **hov_AEW_lat_lim (Default: 25)**: For optional hovmoller output, the maximum latitude of AEW tracks to be displayed on hovmoller diagram.
-- **hov_over_africa_color (Default: True)**: If true and hovmoller is produced, use a different color to indicate AEWs tracks that originate over Africa versus those that originate over the ocean.  
+- **hov_over_africa_color (Default: True)**: If true and hovmoller is produced, use a different color to indicate AEWs tracks that originate over Africa versus those that originate over the ocean.
+- **hov_lon_limits (Default: None)**: Longitude limits of the hovmoller x-axis. `None` follows the input data rather than the old fixed 100W-40E window.
+- **regions (Default: None)**: Basin settings table, as in `run_tracking`; pass the same value you used there. Controls the track-reconnection search window (shorter over land) and the `over_africa` flag on the output wave objects.
 
 # Optional Function Details
 
