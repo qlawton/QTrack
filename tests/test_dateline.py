@@ -9,6 +9,7 @@ a 359 degree jump east.
 Everything here is synthetic, so the test needs no network access.
 """
 
+import figures
 import numpy as np
 import pytest
 import xarray as xr
@@ -115,3 +116,69 @@ def test_short_tracks_are_still_removed(crossing):
     lengths = (~np.isnan(raw_ds["AEW_lon"].values)).sum(axis=1)
     cutoff = 2 * 24 // 6  # AEW_day_remove=2 days at 6-hourly resolution
     assert lengths.min() > cutoff, f"raw output kept tracks of length {sorted(lengths.tolist())}"
+
+
+def test_figure_dateline_crossing(crossing):
+    """Not an assertion -- draws the crossing the assertions above check."""
+    if figures.figure_dir() is None:
+        pytest.skip(f"set {figures.ENV_VAR} to write diagnostic figures")
+    ds, raw_ds, true_lon = crossing
+    lon, lat, unwrapped = _only_track(ds)
+    plt = figures.pyplot()
+
+    cv_lon = raw_ds["longitude"].values
+    cv = raw_ds["curv_data_mean"].values * 1e6
+    steps = np.arange(len(lon))
+    true_wrapped = (true_lon + 180.0) % 360.0 - 180.0
+
+    fig = plt.figure(figsize=(12.5, 8.6))
+    grid = fig.add_gridspec(2, 2, height_ratios=[1.55, 1.0], hspace=0.38, wspace=0.24)
+
+    # -- wrapped Hovmoller: the track leaves one edge and re-enters the other ----
+    ax = fig.add_subplot(grid[0, 0])
+    mesh = figures.hovmoller(ax, cv_lon, cv)
+    figures.shade_old_halo(ax)
+    figures.plot_track(ax, true_wrapped, steps, color=figures.TRUTH_INK, linewidth=2.6, halo=False)
+    figures.plot_track(ax, true_wrapped, steps, color=figures.TRUTH_HALO, linewidth=1.0, linestyle=(0, (4, 3)), halo=False)
+    figures.plot_track(ax, lon, steps, linewidth=1.9)
+    ax.set_xlim(-180, 180)
+    ax.invert_yaxis()
+    ax.set_title("As stored: -180 to 180", fontsize=11, loc="left")
+    ax.text(-176, 1, "shaded: the old zero halo", fontsize=8.5, color="#333333", va="top")
+    fig.colorbar(mesh, ax=ax, pad=0.015, aspect=30, label="5-20N mean curv. vort. (1e-6 s-1)")
+
+    # -- unwrapped: one straight line ------------------------------------------
+    ax = fig.add_subplot(grid[0, 1])
+    figures.plot_track(ax, unwrapped, steps, linewidth=1.9)
+    ax.plot(true_lon, steps, color="#c1440e", linewidth=1.1, linestyle=(0, (5, 3)), zorder=7)
+    ax.axvline(-180, color="#111111", linewidth=0.8, linestyle=(0, (4, 3)), alpha=0.7)
+    ax.text(-181, 1, " crosses 180 here", fontsize=8.5, color="#333333", rotation=90, va="top", ha="right")
+    ax.set_xlabel("unwrapped longitude (deg)")
+    ax.set_ylabel("timestep (6-hourly)")
+    ax.invert_yaxis()
+    ax.set_title("AEW_lon_unwrapped: continuous", fontsize=11, loc="left")
+    figures.tidy(ax)
+
+    # -- latitude and error ------------------------------------------------------
+    ax = fig.add_subplot(grid[1, 0])
+    ax.plot(steps, lat, color=figures.TRACK_INK, linewidth=1.8, label="tracked")
+    ax.axhline(CENTER_LAT, color="#c1440e", linewidth=1.1, linestyle=(0, (5, 3)), label="prescribed")
+    ax.set_xlabel("timestep (6-hourly)")
+    ax.set_ylabel("latitude (deg)")
+    ax.set_title("Latitude", fontsize=11, loc="left")
+    ax.legend(frameon=False, fontsize=9)
+    figures.tidy(ax)
+
+    ax = fig.add_subplot(grid[1, 1])
+    error = np.abs(qtrack.geo.lon_delta(lon, true_lon))
+    crossing_step = int(np.argmax(np.abs(np.diff(lon)) > 180.0)) + 1
+    ax.plot(steps, error, color=figures.TRACK_INK, linewidth=1.8)
+    ax.axvline(crossing_step, color="#c1440e", linewidth=1.1, linestyle=(0, (5, 3)))
+    ax.text(crossing_step + 0.5, ax.get_ylim()[1] * 0.92, "seam crossing", fontsize=8.5, color="#c1440e")
+    ax.set_xlabel("timestep (6-hourly)")
+    ax.set_ylabel("|longitude error| (deg)")
+    ax.set_title(f"Error against the prescribed track -- max {np.nanmax(error):.2f} deg, no jump at the seam", fontsize=11, loc="left")
+    figures.tidy(ax)
+
+    fig.suptitle("Synthetic vortex translating west at 7 m/s through the dateline, tracked end to end", fontsize=13, y=0.965)
+    figures.save(fig, "02_dateline_crossing")

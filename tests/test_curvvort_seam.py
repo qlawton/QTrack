@@ -5,6 +5,7 @@ is a band of roughly 11 columns of fake zero curvature vorticity straddling the
 dateline, so any wave reaching 180 was erased before the tracker ever saw it.
 """
 
+import figures
 import numpy as np
 import pytest
 import xarray as xr
@@ -74,3 +75,57 @@ def test_result_is_independent_of_seam_placement(seam_and_centre):
     np.testing.assert_allclose(rolled[valid], centre_field[valid], rtol=1e-6, atol=1e-12)
 
     assert np.nanmax(seam_field) == pytest.approx(np.nanmax(centre_field), rel=1e-6)
+
+
+def test_figure_seam_invariance(seam_and_centre):
+    """Not an assertion -- draws the evidence for the invariance tested above."""
+    if figures.figure_dir() is None:
+        pytest.skip(f"set {figures.ENV_VAR} to write diagnostic figures")
+    (seam_field, lon, lat), (centre_field, _, _) = seam_and_centre
+    plt = figures.pyplot()
+
+    fig, axes = plt.subplots(3, 1, figsize=(9.5, 10.5), gridspec_kw={"height_ratios": [1, 1, 0.85], "hspace": 0.42})
+    vmin, vmax = figures.symmetric_limits(centre_field)
+
+    for ax, field, title in (
+        (axes[0], seam_field * 1e6, "Vortex centred on the dateline (180)"),
+        (axes[1], centre_field * 1e6, "The same vortex centred on 0E"),
+    ):
+        mesh = ax.pcolormesh(lon, lat, field, cmap="RdBu_r", vmin=vmin * 1e6, vmax=vmax * 1e6, shading="auto", rasterized=True)
+        figures.shade_old_halo(ax)
+        figures.mark_dateline(ax, label=False)
+        ax.set_title(title, fontsize=11, loc="left")
+        ax.set_xlabel("longitude (deg)")
+        ax.set_ylabel("latitude (deg)")
+        ax.set_xlim(-180, 180)
+        figures.tidy(ax)
+        fig.colorbar(mesh, ax=ax, pad=0.015, aspect=28, label="curv. vort. (1e-6 s-1)")
+
+    axes[0].text(
+        -179,
+        lat.min() + 1.5,
+        "shaded bands: the ~12 columns GetBG used to leave at exactly 0.0",
+        fontsize=8.5,
+        color="#333333",
+        va="bottom",
+    )
+
+    # Profiles through the vortex latitude, each re-centred on its own vortex, so
+    # the two curves are directly comparable.
+    row = int(np.argmin(np.abs(lat - 12.0)))
+    offset = np.arange(lon.size) - lon.size // 2
+    seam_profile = np.roll(seam_field[row], lon.size // 2) * 1e6
+    centre_profile = np.roll(centre_field[row], lon.size // 2 - int(np.argmin(np.abs(lon - 0.0)))) * 1e6
+
+    ax = axes[2]
+    ax.plot(offset, seam_profile, color=figures.TRACK_INK, linewidth=2.0, label="vortex on 180")
+    ax.plot(offset, centre_profile, color="#c1440e", linewidth=2.0, linestyle=(0, (5, 3)), label="vortex on 0E")
+    ax.set_xlim(-40, 40)
+    ax.set_xlabel("degrees longitude from the vortex centre")
+    ax.set_ylabel("curv. vort. (1e-6 s-1)")
+    ax.set_title(f"Zonal profile at {lat[row]:.0f}N -- max |difference| = {np.nanmax(np.abs(seam_profile - centre_profile)):.2e}", fontsize=11, loc="left")
+    ax.legend(frameon=False, fontsize=9)
+    figures.tidy(ax)
+
+    fig.suptitle("Radially averaged curvature vorticity does not depend on where the array seam is", fontsize=13, y=0.945)
+    figures.save(fig, "01_curvvort_seam_invariance")
