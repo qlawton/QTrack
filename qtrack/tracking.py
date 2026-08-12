@@ -1,9 +1,15 @@
+from . import geo
+from .core import lat_buffer_rows, lon_buffer_cols
+from .regions import resolve_regions
+
+
 def run_tracking(
     input_file="radial_avg_curv_vort.nc",
     save_file="AEW_tracks_raw.nc",
     initiation_bounds=(-35, 40),
     lat_avg_bounds=(5, 15),
-    left_right_bounds=(-180, 40),
+    left_right_bounds=None,
+    regions=None,
     radius_used=600,
     threshold_initial=2e-6,
     threshold_continue=1e-7,
@@ -29,6 +35,27 @@ def run_tracking(
     More technical details on the algorithm can be found here: https://osf.io/6hqy5
 
     This tracking algoritm was written by Quinton Lawton while at the University of Miami.
+
+    Longitude is treated as periodic whenever the input grid is global, so waves are
+    tracked continuously across the international dateline.
+
+    Parameters of note for global tracking
+    --------------------------------------
+    left_right_bounds : (west, east) or list of them, optional
+        Longitude window(s) in which wave centres are detected, traversed eastward
+        from ``west``. None (the default) means the whole globe. Windows may cross
+        the dateline, e.g. ``(150, -150)`` is the 60-degree window around 180.
+    initiation_bounds : (west, east), list of them, or None
+        Where new waves may be started. Defaults to ``(-35, 40)``, i.e. the
+        classic African easterly wave genesis region; pass None to initiate
+        anywhere.
+    regions : None, str, or list of qtrack.regions.Region
+        Basin-dependent settings (land vs. ocean search cutoffs, whether
+        extrapolation and the forward speed limit apply, the extrapolation leash).
+        None uses ``qtrack.regions.global_regions()``, which keeps the Africa
+        through Caribbean sector exactly as it has always been and applies general
+        ocean settings everywhere else. Pass ``"atlantic"`` for the historical
+        table, or your own list of ``Region`` records.
     """
     ##### ALL SETTINGS #####
     # -----------------------------------------------------------------------------
@@ -68,6 +95,7 @@ def run_tracking(
     # extend the wave, typically due to meridional shifts in wave position.
 
     banding_t = True  # If True, will look at 6 bands (5-15, 6-16,...10-20) (default: True)
+    band_center_offset = (lat_avg_bounds[0] + lat_avg_bounds[-1]) / 2  # Latitude of band 0's centre (10N for the default 5-15 bounds)
 
     # THRESHOLD SETTINGS (for Curvature Vorticity CV)
     thres_init = threshold_initial  # Default: 2e-6 #threshold to initialize a AEW event
@@ -93,8 +121,10 @@ def run_tracking(
     # Merge settings
 
     # WAVE INITATION SETTINGS
-    lon_west = initiation_bounds[0]  # degrees -- AEWs can only be initiated east of this longitude
-    lon_east = initiation_bounds[-1]  # degrees -- AEWs can only be initated west of this longitude
+    # Genesis and tracking windows. Both are modular (a window may cross the
+    # dateline) and both accept a list of windows or None for "no restriction".
+    init_bounds = initiation_bounds  # degrees -- where new AEWs may be started
+    track_bounds = left_right_bounds  # degrees -- where centres are detected at all
     step_3hr_init = step_3hr  # To initiate new point, it must not be within this radius of an existing AEW 1 timestep ago (KM)
     step_6hr_init = step_6hr  # Same as before but for two timesteps ago (KM)
     stuck_thresh_day = 1  # Number of days can go by with wave stuck in same location before cutting track
@@ -156,6 +186,30 @@ def run_tracking(
     arb_thresh = 0.5e-6
     smooth_len = 7
 
+    # -----------------------------------------------------
+    #### BASIN REGIONS ####
+    # -----------------------------------------------------
+    # The scalar longitude thresholds above (the African coast, extra_lon,
+    # extra_transition) only describe where a wave is if longitudes never wrap.
+    # They are collected here into a table of longitude windows, so the same
+    # "which basin am I in?" question has an answer at 150E as well as at 30W.
+    region_table = resolve_regions(
+        regions,
+        extrap_longitude_start=extra_lon,
+        carib_longitude_start=extra_transition,
+        extrap_dist=extra_distance,
+        extrap_dist_carib=extra_distance_60,
+        extra_it_20=extra_it_20,
+        extra_it_60=extra_it_60,
+        centroid_radius=centroid_rad_extra,
+        centroid_radius_carib=centroid_rad_extra_60,
+        back_cutoff_land=back_cutoff_land,
+        back_cutoff_ocean=back_cutoff_ocean,
+        back_cutoff_long_land=back_cutoff_long_land,
+        back_cutoff_long_ocean=back_cutoff_long_ocean,
+        land_lat_limit=land_lat_limit,
+    )
+
     # -----------------------------------------------------------------------------
     ##### END SETTINGS #####
 
@@ -215,11 +269,12 @@ def run_tracking(
         This uses the assumption of a spherical Earth, not accounting for the equatorial "bulge" in real life."""
         start = tm.time()  # noqa: F841
 
-        earth_circ = 6371 * 2 * np.pi * 1000  # earth's circumference in meters
-        lat_met = earth_circ / 360  # get the number of meters in a degree latitude (ignoring "bulge")
-        lat_km = lat_met / 1000
-        res = 1
-        buffer = int(np.ceil(radius / lat_km / res))
+        # Latitude and longitude need different buffers: a degree of longitude is
+        # shorter than a degree of latitude everywhere off the equator, so using the
+        # latitude spacing for both truncated the disc zonally at higher latitudes.
+        # (core.GetBG has always done this correctly; the tracker's copy had not.)
+        buffer = lat_buffer_rows(radius, res)
+        buffer_j = lon_buffer_cols(radius, res)
         boolean_array = np.zeros(np.shape(dx), dtype=bool)
         # i_array = np.zeros(np.shape(dy))
         # j_array = np.zeros(np.shape(dx))
@@ -232,8 +287,8 @@ def run_tracking(
         # plus one gridbox for buffer.
         i_st = i - (buffer + 1)
         i_end = i + (buffer + 1)
-        j_st = j - (buffer + 1)
-        j_end = j + (buffer + 1)
+        j_st = j - (buffer_j + 1)
+        j_end = j + (buffer_j + 1)
 
         new_i = i - i_st
         new_j = j - j_st
@@ -258,43 +313,60 @@ def run_tracking(
         # print(end - start)
         return boolean_array
 
+    def recenter_lon(x_in, PV_in, loni):
+        """Roll a global field so the column of interest sits in the middle of the array.
+
+        The centroid is a weighted mean of raw longitudes, and ``rad_mask`` walks
+        a fixed-width box of columns either side of its centre. Both break at the
+        array seam: near +/-180 the box slice runs off the end (raising an
+        IndexError that the callers swallow, so the centroid silently fails), and
+        a disc spanning the seam would average +179 and -179 to about 0.
+
+        Rolling the field puts the seam half a globe away from the point being
+        worked on, and rebuilding the longitude coordinate continuously about that
+        point means every longitude in the disc is directly comparable. No edge
+        case survives, whatever the radius or how far the iteration wanders.
+
+        Non-global input is returned untouched -- a regional grid has real edges,
+        and rolling it would wrap unrelated longitudes together.
+        """
+        if not periodic_lon:
+            return x_in, PV_in, loni
+        n = np.size(x_in)
+        middle = n // 2
+        shift = middle - loni
+        rolled_lon = np.roll(x_in, shift)
+        centre_lon = x_in[loni]
+        # Make the rolled axis continuous and monotonic about the centre.
+        rolled_lon = geo.wrap180(rolled_lon - centre_lon) + centre_lon
+        return rolled_lon, np.roll(PV_in, shift, axis=-1), middle
+
     def general_centroid(x_in, y_in, PV_in, radius, lati, loni, it, exclude=True):
         """Similar to that used for calculating PV centers, this computes a centroid point for a given field, using a prescribed
         radius as specified in the function input. Can iterate a given number of times: set in=0 for no iterations.
 
-        Uses the more computationally efficient (rad_mask) function to test if a point is within a radial distance or not."""
+        Uses the more computationally efficient (rad_mask) function to test if a point is within a radial distance or not.
+
+        The returned longitude is wrapped back into the -180 to 180 convention."""
         # start= time.time()
 
         # What does our lat/lon refer to?
         guess_lat = y_in[lati]
-        guess_lon = x_in[loni]
         # Other important stuff
-        # res = 1
         # box_num = 6/res; #First number is the degrees you want to cut out from the dataset for analysis
-
-        def get_dist_meters(lon, lat):
-            earth_circ = 6371 * 2 * np.pi * 1000  # earth's circumference in meters
-            lat_met = earth_circ / 360  # get the number of meters in a degree latitude (ignoring "bulge")
-            lat_dist = np.gradient(lat, axis=0) * lat_met
-            lon_dist = np.gradient(lon, axis=1) * np.cos(np.deg2rad(lat)) * lat_met
-            return lon_dist, lat_dist
 
         ## FIRST ITERATION ##
         # use the last bt_lat, bt_lon as the "genesis point" and commence slicing to make data sizes more managable
         lati, latval = find_nearest(y_in, guess_lat)
-        loni, lonval = find_nearest(x_in, guess_lon)
 
-        # Commence slicing out the correct data
-        # lat_slice = slice(int(lati-box_num),int(lati+box_num))
-        # lon_slice = slice(int(loni-box_num),int(loni+box_num))
-        lon_new = x_in  # [lon_slice]
-        lat_new = y_in  # [lat_slice]
-        PV_slice = PV_in  # [lat_slice,lon_slice]
-        # Get the distance array for later use
+        # Put the seam half a globe away from the point we are centroiding on.
+        lon_new, PV_slice, loni = recenter_lon(x_in, PV_in, loni)
+        lat_new = y_in
 
-        # Make a meshed grid
-        LON_X, LAT_Y = np.meshgrid(lon_new, lat_new)
-        dx, dy = get_dist_meters(LON_X, LAT_Y)
+        # dx/dy depend only on the (unchanged) grid spacing and latitude, so they
+        # are computed once outside this function rather than on every call.
+        LON_X = np.broadcast_to(lon_new, np.shape(PV_slice))
+        LAT_Y = grid_lat_2d
 
         # Finally, output a 1/0 filter for PV within the given radius
         # pv_filt = inner_filter(lat_new, lon_new, guess_lat, guess_lon, radius)
@@ -387,9 +459,11 @@ def run_tracking(
 
         # end = time.time()
         # print(str(end-start)+' secs')
-        return lon_new, lat_new, pv_filt, PV_mask, x_cent, y_cent
+        # The centroid was computed on the recentred (continuous) longitude axis,
+        # so bring it back into the -180 to 180 convention before returning.
+        return lon_new, lat_new, pv_filt, PV_mask, geo.wrap180(x_cent), y_cent
 
-    def find_maxima(data_in, lon, lat, lon_west, lon_east, thres_init, thres_cont, separate_bands=banding_t, exclude=True, smooth=True):
+    def find_maxima(data_in, lon, lat, thres_init, thres_cont, separate_bands=banding_t, exclude=True, smooth=True):
         """This finds local maxima for a 5-20N AVERAGE VALUE AT EACH LONGITUDE POINT. Two thresholds are considered:
         -- "Init" is the threshold for initially defining a AEW, and here is ONLY defined if east of the "lon_land" value
         -- "Cont" is the threshold for continuing the tracking/propagation of an existing AEW, and is defined everywhere."""
@@ -439,7 +513,11 @@ def run_tracking(
 
             data_mean_noneg = np.nanmax(band_vals, axis=0)
             data_mean = np.nanmax(test_vals, axis=0)
-            lat_center = np.argmax(band_vals, axis=0) + 10
+            # Band i spans lat_avg_bounds shifted north by i degrees, so the centre
+            # of the winning band is its midpoint plus i. This used to be a literal
+            # "+ 10", the midpoint of the default (5, 15) bounds, which silently
+            # gave the wrong first-guess latitude whenever lat_avg_bounds changed.
+            lat_center = np.argmax(band_vals, axis=0) + band_center_offset
 
             # Need to get final list of latitudes that is the same length as the init/cont out. Actually right now only
             # init since we only initate new waves with the latitude banding... use previous latitude for existing wavese
@@ -458,12 +536,19 @@ def run_tracking(
             else:
                 data_mean_noneg = data_mean
 
-        if smooth:
-            data_mean_noneg = savgol_filter(data_mean_noneg, 3, 2)
-            data_mean = savgol_filter(data_mean, 3, 2)
+        # On a global grid the zonal profile is a closed loop, so the smoothing and
+        # the local-maximum search have to wrap. Without this a wave sitting on the
+        # array seam is simply never detected, because argrelextrema cannot see a
+        # neighbour on one side of it.
+        edge_mode = "wrap" if periodic_lon else "interp"
+        extrema_mode = "wrap" if periodic_lon else "clip"
 
-        init_i = signal.argrelextrema(data_mean, np.greater)[0]
-        cont_i = signal.argrelextrema(data_mean, np.greater)[0]
+        if smooth:
+            data_mean_noneg = savgol_filter(data_mean_noneg, 3, 2, mode=edge_mode)
+            data_mean = savgol_filter(data_mean, 3, 2, mode=edge_mode)
+
+        init_i = signal.argrelextrema(data_mean, np.greater, mode=extrema_mode)[0]
+        cont_i = signal.argrelextrema(data_mean, np.greater, mode=extrema_mode)[0]
 
         init_max = data_mean_noneg[init_i].astype(float)
         cont_max = data_mean_noneg[cont_i].astype(float)
@@ -473,27 +558,53 @@ def run_tracking(
         if (np.isnan(cont_max)).any():
             cont_max[np.isnan(cont_max)] = 0
 
-        # Filter out maximas such that they have to both be positive and greater than a given threshold
-        init_max = init_max[lon[init_i] < left_right_bounds[-1]]
-        init_i = init_i[lon[init_i] < left_right_bounds[-1]]
-        init_max = init_max[lon[init_i] > left_right_bounds[0]]
-        init_i = init_i[lon[init_i] > left_right_bounds[0]]
+        # Restrict to the tracking window(s). These are modular, so a window may
+        # cross the dateline and None means the whole globe. The old code compared
+        # against a single (min, max) pair, which cannot express either.
+        in_domain_init = geo.lon_in_any_range(lon[init_i], track_bounds, inclusive="neither")
+        init_max = init_max[in_domain_init]
+        init_i = init_i[in_domain_init]
         init_i = init_i[init_max >= thres_init]
 
-        cont_max = cont_max[lon[cont_i] < left_right_bounds[-1]]
-        cont_i = cont_i[lon[cont_i] < left_right_bounds[-1]]
-        cont_max = cont_max[lon[cont_i] > left_right_bounds[0]]
-        cont_i = cont_i[lon[cont_i] > left_right_bounds[0]]
+        in_domain_cont = geo.lon_in_any_range(lon[cont_i], track_bounds, inclusive="neither")
+        cont_max = cont_max[in_domain_cont]
+        cont_i = cont_i[in_domain_cont]
         cont_i = cont_i[cont_max >= thres_cont]
 
-        # Now filter "initial" AEWs such that they have to have a longitude greater than 17W (the Africa land cutoff)
-        lon_init = lon[init_i]
-        init_i = init_i[lon_init >= lon_west]
-        lon_init = lon_init[lon_init >= lon_west]
-        init_i = init_i[lon_init <= lon_east]
+        # Now restrict "initial" AEWs to the genesis window (classically Africa and
+        # the far eastern Atlantic, i.e. east of 35W and west of 40E).
+        init_i = init_i[geo.lon_in_any_range(lon[init_i], init_bounds, inclusive="both")]
         # lat_init = lat_center[init_i]
 
         return data_mean, init_i, cont_i, lat_center
+
+    def rotate_maxima_off_seam(index_list, values):
+        """Rotate a sorted list of longitude indices so no cluster straddles the array seam.
+
+        ``remove_nearby`` merges maxima that sit within a few gridpoints of each
+        other by walking the sorted list and comparing raw index differences. On a
+        periodic axis a pair either side of the seam looks like the two furthest
+        apart points on the grid, so such a pair was never merged.
+
+        Cutting the ring at its widest gap instead of at index 0 puts every cluster
+        in one contiguous run, and the caller maps the results back with ``% n``.
+        Away from the seam nothing changes, so legacy behaviour -- including the
+        way overlapping pairs are weighted -- is preserved exactly.
+        """
+        idx = np.asarray(index_list)
+        values = np.asarray(values)
+        n = np.size(lon)
+        identity = (idx, values, lambda p: int(p))
+        if not periodic_lon or idx.size < 2:
+            return identity
+
+        gaps = np.diff(np.concatenate([idx, [idx[0] + n]]))
+        cut = int(np.argmax(gaps))
+        if cut == idx.size - 1:  # widest gap is already at the wrap; nothing to do
+            return identity
+
+        rotated = np.concatenate([idx[cut + 1 :], idx[: cut + 1] + n])
+        return rotated, np.concatenate([values[cut + 1 :], values[: cut + 1]]), lambda p: int(p) % n
 
     def remove_nearby(data_list, data_values, arb_thresh, lon_thresh, data_res):
         """Using an extrema threshold is likely to result in duplicate data points nearby each other. In this
@@ -508,6 +619,8 @@ def run_tracking(
         adj_point = []
         grid_thresh = lon_thresh / data_res
         # print(grid_thresh)
+
+        data_list, data_values, unrotate = rotate_maxima_off_seam(data_list, data_values)
 
         for i in range(len(data_list)):
             if i == 0:  # If first element
@@ -562,7 +675,7 @@ def run_tracking(
                     counter = []
                     counter_data = []
 
-        return adj_point, rm_list
+        return [unrotate(p) for p in adj_point], [unrotate(p) for p in rm_list]
 
     def execute_cleanup1(cont_max, init_max, data_mean, arb_thresh, lon_thresh, data_res):
         """This just executes the remove_nearby script and cleans up output to generate the initial list of lon points."""
@@ -854,9 +967,28 @@ def run_tracking(
     #     lat = nclat[lat_st:lat_end]
     #     lon = nclon[lon_st:lon_end]
     # print(lat, lon)
-    lon = nclon
-    lat = nclat
+    lon = np.asarray(nclon)
+    lat = np.asarray(nclat)
     curv_vort = nc_file.variables["curv_vort"]  # [:,lat_st:lat_end,lon_st:lon_end]
+
+    # ----- GRID GEOMETRY, COMPUTED ONCE -----
+    # A global grid is treated as periodic: peak finding wraps, and the centroid
+    # rolls the field so the seam is never near the point being worked on. A
+    # regional grid keeps the old behaviour, edges and all.
+    periodic_lon = geo.is_global_lon(lon, res)
+    if periodic_lon:
+        print("Global longitude axis detected -- tracking across the dateline is enabled.")
+    else:
+        print(f"Non-global longitude axis ({lon.min():.1f} to {lon.max():.1f}) -- tracking will stop at the domain edges.")
+
+    # dx/dy depend only on the grid spacing and latitude, not on where the seam
+    # sits, so general_centroid can reuse them instead of rebuilding a meshgrid on
+    # every single call (which was the dominant cost of the tracking step).
+    _grid_lon_2d, grid_lat_2d = np.meshgrid(lon, lat)
+    earth_circ = 6371 * 2 * np.pi * 1000  # earth's circumference in meters
+    lat_met = earth_circ / 360  # meters in a degree of latitude (ignoring the "bulge")
+    dy = np.gradient(grid_lat_2d, axis=0) * lat_met
+    dx = np.gradient(_grid_lon_2d, axis=1) * np.cos(np.deg2rad(grid_lat_2d)) * lat_met
 
     # wind_file = Dataset(windfile, 'r')
 
@@ -905,7 +1037,7 @@ def run_tracking(
         # -- NO INITIATED WAVES EXIST
         # -- For these, we only care about trying to designate "new" waves
         if (slc_num == 0) or ("AEW_lon" not in locals()):  # This only runs if an array has not already been created
-            data_mean, init_max, cont_max, lat_center = find_maxima(curv_vort_data, lon, lat, lon_west, lon_east, thres_init, thres_cont, separate_bands=banding_t)
+            data_mean, init_max, cont_max, lat_center = find_maxima(curv_vort_data, lon, lat, thres_init, thres_cont, separate_bands=banding_t)
             mean_array[slc_num, :] = data_mean[:]
             # print(data_mean)
             # print(data_mean)
@@ -957,7 +1089,7 @@ def run_tracking(
 
             ##### EXTRAPOLATION SECTION: add in Alan Brammer's suggested extrapolation metric
 
-            data_mean, init_max, cont_max, lat_center = find_maxima(curv_vort_data, lon, lat, lon_west, lon_east, thres_init, thres_cont, separate_bands=banding_t)
+            data_mean, init_max, cont_max, lat_center = find_maxima(curv_vort_data, lon, lat, thres_init, thres_cont, separate_bands=banding_t)
             mean_array[slc_num, :] = data_mean[:]
 
             if EXTRAPOLATE:
