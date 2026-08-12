@@ -24,7 +24,27 @@ from joblib.externals.loky import set_loky_pickler
 from netCDF4 import Dataset, num2date
 from numpy import dtype
 
+from . import geo
+
 set_loky_pickler("dill")
+
+EARTH_CIRCUMFERENCE_M = 6371 * 2 * np.pi * 1000  # spherical Earth, ignoring the equatorial bulge
+DEG_LAT_M = EARTH_CIRCUMFERENCE_M / 360  # metres in one degree of latitude
+
+
+def lat_buffer_rows(radius_km, res):
+    """Number of grid rows spanned by ``radius_km`` in the latitude direction."""
+    return int(np.ceil(radius_km / (DEG_LAT_M / 1000.0) / res))
+
+
+def lon_buffer_cols(radius_km, res):
+    """Number of grid columns spanned by ``radius_km`` in the longitude direction.
+
+    Assumes half a degree of latitude per degree of longitude, i.e. valid up to
+    roughly 60 degrees latitude -- the same assumption the radial average has
+    always made.
+    """
+    return int(np.ceil(radius_km / (DEG_LAT_M / 1000.0 / 2.0) / res))
 
 
 class season:
@@ -338,13 +358,8 @@ def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nond
         dx, dy = get_dist_meters(lon, lat)
 
         # BUFFER -- let's give this a radius*lat buffer for longitude as well
-        earth_circ = 6371 * 2 * np.pi * 1000  # earth's circumference in meters
-        lat_met = earth_circ / 360  # get the number of meters in a degree latitude (ignoring "bulge")
-        lat_km_lat = lat_met / 1000 / 1
-        lat_km_lon = lat_met / 1000 / 2
-
-        buffer = int(np.ceil(radius / lat_km_lat / res))
-        buffer_lon = int(np.ceil(radius / lat_km_lon / res))
+        buffer = lat_buffer_rows(radius, res)
+        buffer_lon = lon_buffer_cols(radius, res)
 
         i_bounds = np.arange((buffer + 1), np.shape(data_file)[0] - buffer)
         j_bounds = np.arange((buffer_lon + 1), np.shape(data_file)[1] - buffer_lon)
@@ -360,13 +375,10 @@ def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nond
         def rad_mask(i, j, dx, dy, radius):
             start = tm.time()  # noqa: F841
 
-            earth_circ = 6371 * 2 * np.pi * 1000  # earth's circumference in meters
-            lat_met = earth_circ / 360  # get the number of meters in a degree latitude (ignoring "bulge")
-            lat_km_lat = lat_met / 1000 / 1  # Updated to fix high latitude errors...
-            lat_km_lon = lat_met / 1000 / 2  # Updated to work up to 60N...
-            res = 1
-            buffer = int(np.ceil(radius / lat_km_lat / res))
-            buffer_j = int(np.ceil(radius / lat_km_lon / res))
+            # Buffers follow the enclosing GetBG call's resolution rather than a
+            # hard-coded 1 degree, so data_resolution actually takes effect.
+            buffer = lat_buffer_rows(radius, res)
+            buffer_j = lon_buffer_cols(radius, res)
             boolean_array = np.zeros(np.shape(dx), dtype=bool)
             # print(buffer)
             # i_array = np.zeros(np.shape(dy))
@@ -443,18 +455,38 @@ def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nond
         u_wnd = nc_file["upsi"].values
         v_wnd = nc_file["vpsi"].values
 
-    LON, LAT = np.meshgrid(lon, lat)
+    # ----- PERIODIC LONGITUDE HANDLING -----
+    # Both the zonal gradient in curv_vort() and the radial average in GetBG() need
+    # a complete neighbourhood on either side of every gridpoint. Without one, GetBG
+    # leaves its halo at exactly 0.0 -- on a global grid that is a band of ~11 columns
+    # of fake zero curvature vorticity straddling the dateline, which erases any wave
+    # reaching 180. On a global grid we therefore wrap the winds (and the longitude
+    # coordinate, with continuous values so dx does not spike) before computing, and
+    # strip the pad afterwards. Regional input is unchanged: it still needs roughly
+    # a radius of padding beyond the region of interest.
+    periodic_lon = geo.is_global_lon(lon, res)
+    pad_n = lon_buffer_cols(radius, res) + 1 if periodic_lon else 0
+    if periodic_lon:
+        print(f"Global longitude axis detected -- wrapping {pad_n} columns across the seam.")
+    else:
+        print("Non-global longitude axis -- edges will be left unfilled, as before.")
+
+    lon_work = geo.pad_lon_coord(lon, pad_n)
+    u_work = geo.pad_lon(u_wnd, pad_n, axis=-1)
+    v_work = geo.pad_lon(v_wnd, pad_n, axis=-1)
+
+    LON, LAT = np.meshgrid(lon_work, lat)
     dx, dy = get_dist_meters(LON, LAT)
 
-    out_array = np.zeros((np.shape(time)[0], np.shape(LAT)[0], np.shape(LAT)[1]))
+    out_array = np.zeros((np.shape(time)[0], np.size(lat), np.size(lon)))
 
     def run_loop(slc_num, radius):
         # file_list = []
         print("Timestep number: " + str(slc_num))
         out_name = data_dir + "curv_temp_data_" + str(slc_num) + ".npy"
-        curv_vort_data = curv_vort(u_wnd[slc_num, :, :], v_wnd[slc_num, :, :], dx, dy)
+        curv_vort_data = curv_vort(u_work[slc_num, :, :], v_work[slc_num, :, :], dx, dy)
         set_radius = radius
-        curv_array = GetBG(LON, LAT, curv_vort_data, res, set_radius)
+        curv_array = geo.unpad_lon(GetBG(LON, LAT, curv_vort_data, res, set_radius), pad_n, axis=-1)
 
         if SAVE_IMAGE:
             curv_cont = [-12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
