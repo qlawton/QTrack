@@ -1,6 +1,34 @@
+import numpy as np
+from scipy.signal import savgol_filter as _savgol_filter
+
 from . import geo
 from .core import lat_buffer_rows, lon_buffer_cols
-from .regions import region_for, resolve_regions
+from .regions import over_land_anywhere, region_for, resolve_regions
+
+
+def smooth_lon_tracks(lon_rows, window, order, mode="nearest"):
+    """Savitzky-Golay smoothing of longitude tracks, done on unwrapped copies.
+
+    Smoothing raw longitudes turns a single seam crossing into a 360 degree step
+    and drags the whole smoothed track towards the middle of the globe. Unwrapping
+    first, smoothing, then re-wrapping gives the same answer everywhere else and
+    the right answer at the seam. NaN handling is unchanged: unwrap_lon preserves
+    gaps, and the filter spreads them exactly as before.
+    """
+    rows = np.atleast_2d(np.asarray(lon_rows, dtype=float))
+    out = np.empty_like(rows)
+    for i in range(rows.shape[0]):
+        out[i, :] = _savgol_filter(geo.unwrap_lon(rows[i, :]), window, order, mode=mode)
+    return geo.wrap180(out).reshape(np.shape(lon_rows))
+
+
+def unwrap_lon_tracks(lon_rows):
+    """Row-wise :func:`qtrack.geo.unwrap_lon`, for a continuous longitude output variable."""
+    rows = np.atleast_2d(np.asarray(lon_rows, dtype=float))
+    out = np.empty_like(rows)
+    for i in range(rows.shape[0]):
+        out[i, :] = geo.unwrap_lon(rows[i, :])
+    return out.reshape(np.shape(lon_rows))
 
 
 def run_tracking(
@@ -773,9 +801,13 @@ def run_tracking(
             first = real_val[0][0]
             last = real_val[-1][0]
 
-            # Linear interpolation of "intermediate" points
-            nans, x = nan_helper(AEW_lon_slc)
-            AEW_lon_slc[nans] = np.interp(x(nans), x(~nans), AEW_lon_slc[~nans])
+            # Linear interpolation of "intermediate" points. Longitude is filled on
+            # an unwrapped copy: interpolating raw longitudes across a gap that spans
+            # the dateline would sweep the wave back around the whole globe.
+            lon_unwrapped = geo.unwrap_lon(AEW_lon_slc)
+            nans, x = nan_helper(lon_unwrapped)
+            lon_unwrapped[nans] = np.interp(x(nans), x(~nans), lon_unwrapped[~nans])
+            AEW_lon_slc = geo.wrap180(lon_unwrapped)
 
             nans, x = nan_helper(AEW_lat_slc)
             AEW_lat_slc[nans] = np.interp(x(nans), x(~nans), AEW_lat_slc[~nans])
@@ -799,9 +831,16 @@ def run_tracking(
 
         return AEW_lon_in, AEW_lat_in
 
-    def extend_AEW(data_stuff, smooth_len):
+    def extend_AEW(data_stuff, smooth_len, wrap=False):
+        """Linearly extend a track before its first point and after its last.
+
+        Pass wrap=True for longitude: the fits then run on an unwrapped copy and
+        the extension is re-wrapped, so extending a track that crossed the seam
+        does not produce a slope of hundreds of degrees per timestep.
+        """
         # Test to make sure that we can add 13 points... otherwise, add other points
-        data_in = data_stuff.copy()
+        data_in = geo.unwrap_lon(data_stuff) if wrap else data_stuff.copy()
+        rewrap = geo.wrap180 if wrap else (lambda values: values)
         real_val = np.argwhere(~np.isnan(data_in))
         first = real_val[0][0]
         last = real_val[-1][0]
@@ -811,7 +850,7 @@ def run_tracking(
             append_len = smooth_len
         elif ((data_len - 1) == last) or (first == 0):
             print("Zero detected, will not attempt extension")  # Don't do anything else
-            return 0, 0, data_in
+            return 0, 0, rewrap(data_in)
         else:
             append_len = np.min([data_len - last - 1, first + 1]) - 1
             print("Shorter Append = " + str(append_len))
@@ -843,7 +882,7 @@ def run_tracking(
         data_in = data_in.reshape(-1, 1)
         data_in[(first - append_len) : first] = reg_1
         data_in[(last + 1) : (last + append_len + 1)] = reg_2
-        return reg_1, reg_2, data_in.reshape(1, -1)
+        return rewrap(reg_1), rewrap(reg_2), rewrap(data_in.reshape(1, -1))
 
     # reg1, reg2, data_in = extend_AEW(data, smooth_len)
 
@@ -903,12 +942,13 @@ def run_tracking(
                 sample_data = lon_in[row, :]  # Sample data for row currently in
                 for new_row in range(row + 1, np.shape(lon_in)[0]):  # Look at the data for upcoming rows
                     new_data = lon_in[new_row, :]
-                    equal_num = np.abs(new_data - sample_data) <= close_cutoff
+                    separation = geo.lon_delta(new_data, sample_data)  # shortest way round, not raw subtraction
+                    equal_num = np.abs(separation) <= close_cutoff
                     equal_num = len(equal_num[equal_num == True])  # noqa: E712
                     # print(old_equal_num, equal_num)
                     if equal_num != 0:
-                        first_i = np.where(np.abs(new_data - sample_data) <= close_cutoff)[0][0]
-                        first_i2 = np.argwhere(new_data - sample_data <= close_cutoff)[0][0]
+                        first_i = np.where(np.abs(separation) <= close_cutoff)[0][0]
+                        first_i2 = np.argwhere(separation <= close_cutoff)[0][0]
                         print(first_i, first_i2)
                         beg_new = new_data[: (first_i + 1)]
                         beg_old = sample_data[: (first_i + 1)]
@@ -919,10 +959,10 @@ def run_tracking(
 
                         # NEW EDITED SECTION.... TEST OUT
                         if prior_num_new != 0 and prior_num_old != 0:
-                            if prior_num_new <= prior_num_old and (np.abs(beg_new[-1] - beg_new[0]) <= 5):  # If the "new" data is greater or equal to 20, continue
+                            if prior_num_new <= prior_num_old and (np.abs(geo.lon_delta(beg_new[-1], beg_new[0])) <= 5):  # If the "new" data is greater or equal to 20, continue
                                 print(beg_new, beg_old)
                                 rm_list.append(new_row)
-                            elif prior_num_old <= prior_num_new and (np.abs(beg_old[-1] - beg_old[0]) <= 5):  # If the old data also fits these requirements along with new data...
+                            elif prior_num_old <= prior_num_new and (np.abs(geo.lon_delta(beg_old[-1], beg_old[0])) <= 5):  # If the old data also fits these requirements along with new data...
                                 print(beg_new, beg_old)
                                 rm_list.append(row)
 
@@ -1524,7 +1564,7 @@ def run_tracking(
             merge_list[i] = merge_list[i] - reduce_by
         # print(merge_list)
 
-    AEW_lon_filter = savgol_filter(AEW_lon, smooth_len, 2, mode="nearest")
+    AEW_lon_filter = smooth_lon_tracks(AEW_lon, smooth_len, 2, mode="nearest")
     AEW_lat_filter = savgol_filter(AEW_lat, smooth_len, 2, mode="nearest")
     # plt.plot(AEW_lon_filter[data_slc,:], AEW_lat_filter[data_slc,:], 'b')
 
@@ -1533,7 +1573,7 @@ def run_tracking(
         for row in range(np.shape(AEW_lon)[0]):
             data_lon_filter = AEW_lon_filter[row, :]
             data_lat_filter = AEW_lat_filter[row, :]
-            *_, data_out_lon = extend_AEW(data_lon_filter, int(np.floor(smooth_len / 3)))
+            *_, data_out_lon = extend_AEW(data_lon_filter, int(np.floor(smooth_len / 3)), wrap=True)
             *_, data_out_lat = extend_AEW(data_lat_filter, int(np.floor(smooth_len / 3)))
             AEW_lon_filter[row, :] = data_out_lon
             AEW_lat_filter[row, :] = data_out_lat
@@ -1594,6 +1634,11 @@ def run_tracking(
         AEW_longitude.long_name = "Longitude of AEW Tracks"
         AEW_longitude.units = "degrees"
 
+        AEW_longitude_unwrapped = ncout.createVariable("AEW_lon_unwrapped", np.dtype("float64").char, ("system", "time"))
+        AEW_longitude_unwrapped.long_name = "Longitude of AEW Tracks, unwrapped (continuous across the dateline)"
+        AEW_longitude_unwrapped.units = "degrees"
+        AEW_longitude_unwrapped.comment = "AEW_lon with 360 degree jumps removed, so a track crossing 180 plots as a straight line on a Hovmoller. May fall outside -180 to 180."
+
         AEW_latitude = ncout.createVariable("AEW_lat", np.dtype("float64").char, ("system", "time"))
         AEW_latitude.long_name = "Latitude of AEW Tracks"
         AEW_latitude.units = "degrees"
@@ -1616,6 +1661,7 @@ def run_tracking(
         longitude[:] = lon[:]
         latitude[:] = lat[:]
         AEW_longitude[:, :] = AEW_lon[:, :]
+        AEW_longitude_unwrapped[:, :] = unwrap_lon_tracks(AEW_lon)[:, :]
         AEW_latitude[:, :] = AEW_lat[:, :]
         AEW_longitude_smooth[:, :] = AEW_lon_filter[:, :]
         AEW_latitude_smooth[:, :] = AEW_lat_filter[:, :]
@@ -1651,10 +1697,20 @@ def run_postprocessing(
     hov_name_prefix="",
     hov_AEW_lat_lim=25,
     hov_over_africa_color=True,
+    hov_lon_limits=None,
+    regions=None,
 ):
     """
         AEW Postprocessing Script: Takes the computed AEW tracks and cleans them up. This includes combining duplicate tracks, removing short tracks, and connecting
     broken tracks.
+
+    Longitude is handled periodically throughout, so tracks that cross the
+    international dateline are merged, reconnected and smoothed correctly.
+
+    ``regions`` selects the basin settings table and should match whatever was
+    passed to ``run_tracking``; see that function's docstring. It controls the
+    reconnection search window (shorter over land) and the ``over_africa`` flag on
+    the output wave objects.
     """
     import datetime
 
@@ -1678,6 +1734,10 @@ def run_postprocessing(
     connect_distance_back = AEW_backward_connect_dist  # km #Same, but for waves that are near stationary or move in the wrong direction
     connect_step = 2
     TC_min_month = 1  # earliest month for TC merging (FLAGGED: hard coding needs to be fixed)
+
+    # Basin settings, as in run_tracking. Used here for the reconnection search
+    # window (shorter over land) and for the over_africa flag.
+    region_table = resolve_regions(regions, connect_step=connect_step)
 
     ##### -- POSTPROCESSING SETTINGS -- #####
     #### IMPORTANT: MINIMUM LENGTH OF TRACK! ####
@@ -1755,12 +1815,13 @@ def run_postprocessing(
                 sample_data = lon_in[row, :]  # Sample data for row currently in
                 for new_row in range(row + 1, np.shape(lon_in)[0]):  # Look at the data for upcoming rows
                     new_data = lon_in[new_row, :]
-                    equal_num = np.abs(new_data - sample_data) <= close_cutoff
+                    separation = geo.lon_delta(new_data, sample_data)  # shortest way round, not raw subtraction
+                    equal_num = np.abs(separation) <= close_cutoff
                     equal_num = len(equal_num[equal_num == True])  # noqa: E712
                     # print(old_equal_num, equal_num)
                     if equal_num != 0:
-                        first_i = np.where(np.abs(new_data - sample_data) <= close_cutoff)[0][0]
-                        # first_i2 = np.argwhere(new_data - sample_data <= close_cutoff)[0][0]
+                        first_i = np.where(np.abs(separation) <= close_cutoff)[0][0]
+                        # first_i2 = np.argwhere(separation <= close_cutoff)[0][0]
                         # print(first_i, first_i2)
                         beg_new = new_data[: (first_i + 1)]
                         beg_old = sample_data[: (first_i + 1)]
@@ -1771,10 +1832,10 @@ def run_postprocessing(
 
                         # NEW EDITED SECTION.... TEST OUT
                         if prior_num_new != 0 and prior_num_old != 0:
-                            if prior_num_new <= prior_num_old and (np.abs(beg_new[-1] - beg_new[0]) <= 5):  # If the "new" data is greater or equal to 20, continue
+                            if prior_num_new <= prior_num_old and (np.abs(geo.lon_delta(beg_new[-1], beg_new[0])) <= 5):  # If the "new" data is greater or equal to 20, continue
                                 # print(beg_new, beg_old)
                                 rm_list.append(new_row)
-                            elif prior_num_old <= prior_num_new and (np.abs(beg_old[-1] - beg_old[0]) <= 5):  # If the old data also fits these requirements along with new data...
+                            elif prior_num_old <= prior_num_new and (np.abs(geo.lon_delta(beg_old[-1], beg_old[0])) <= 5):  # If the old data also fits these requirements along with new data...
                                 # print(beg_new, beg_old)
                                 rm_list.append(row)
 
@@ -1855,11 +1916,14 @@ def run_postprocessing(
                 old_wave_last = old_wave_data[-1]
 
                 if ~np.isnan(two_wave_distance) and two_wave_distance < merge_distance:  # If wave is found to be merging
-                    if new_wave_last >= old_wave_last:
+                    # Which of the two ends further east? By the shortest path, not by
+                    # raw value: -179 is east of +179, not 358 degrees west of it.
+                    new_is_further_east = geo.lon_delta(new_wave_last, old_wave_last) >= 0
+                    if new_is_further_east:
                         temp_merge = [existing, new_existing]
                         AEW_lon[new_existing, slc_num:] = AEW_lon[existing, slc_num:]
                         AEW_lat[new_existing, slc_num:] = AEW_lat[existing, slc_num:]
-                    elif old_wave_last >= new_wave_last:
+                    else:
                         temp_merge = [new_existing, existing]
                         AEW_lon[existing, slc_num:] = AEW_lon[new_existing, slc_num:]
                         AEW_lat[existing, slc_num:] = AEW_lat[new_existing, slc_num:]
@@ -1898,13 +1962,13 @@ def run_postprocessing(
 
                 if first_pos <= 0 + tm_step or new_last_pos != (first_pos - 1 - tm_step):  # If out of range, or if the timestep in question is not a wave's first or last position
                     pass
-                elif lon_first >= -17 and tm_step > connect_step:  # If over land, we only want to check 18 hours
+                elif tm_step > region_for(lon_first.item(), region_table).reconnect_tm_steps:  # Over land we only look back 18 hours
                     pass
                 else:
                     new_lon_last = new_AEW_lon_slc[first_pos - 1 - tm_step]
                     new_lat_last = new_AEW_lat_slc[first_pos - 1 - tm_step]
                     test_distance1 = haversine(new_lon_last, new_lat_last, lon_first, lat_first)
-                    if test_distance1 <= connect_distance and lon_first <= new_lon_last:  # IF the "first" position being connected is further west... bigger range
+                    if test_distance1 <= connect_distance and geo.is_westward(lon_first, new_lon_last):  # IF the "first" position being connected is further west... bigger range
                         # print('BOOM!')
                         temp_arr = [existing, new_existing]
                         # print(existing, new_existing)
@@ -1913,7 +1977,7 @@ def run_postprocessing(
                         else:
                             final_reconnect_list = np.vstack((final_reconnect_list, temp_arr))
                     # WHOLE NEW BLOCK, ADDED LOGISTICS
-                    elif test_distance1 <= connect_distance_back and lon_first > new_lon_last:  # Same but for "backwards" wave
+                    elif test_distance1 <= connect_distance_back and not geo.is_westward(lon_first, new_lon_last):  # Same but for "backwards" wave
                         # print('BOOM!')
                         temp_arr = [existing, new_existing]
                         # print(existing, new_existing)
@@ -1924,14 +1988,14 @@ def run_postprocessing(
 
                 if last_pos >= (np.shape(AEW_lon)[1] - 1 - tm_step) or new_first_pos != (last_pos + 1 + tm_step):  # If out of range, or if the timestep in question is not a wave's first or last position
                     pass
-                elif lon_last >= -17 and tm_step > connect_step:  # If over land, we only want to check 18 hours
+                elif tm_step > region_for(lon_last.item(), region_table).reconnect_tm_steps:  # Over land we only look back 18 hours
                     pass
                 else:
                     new_lon_first = new_AEW_lon_slc[last_pos + 1 + tm_step]
                     new_lat_first = new_AEW_lat_slc[last_pos + 1 + tm_step]
                     test_distance2 = haversine(new_lon_first, new_lat_first, lon_last, lat_last)
                     # print(test_distance2)
-                    if test_distance2 <= connect_distance and new_lon_first <= lon_last:
+                    if test_distance2 <= connect_distance and geo.is_westward(new_lon_first, lon_last):
                         # print(test_distance2)
                         # print('BOOM!')
                         temp_arr = [existing, new_existing]
@@ -1941,7 +2005,7 @@ def run_postprocessing(
                             final_reconnect_list = np.array(temp_arr).reshape(1, 2)
                         else:
                             final_reconnect_list = np.vstack((final_reconnect_list, temp_arr))
-                    elif test_distance2 <= connect_distance_back and new_lon_first > lon_last:
+                    elif test_distance2 <= connect_distance_back and not geo.is_westward(new_lon_first, lon_last):
                         # print(test_distance2)
                         # print('BOOM!')
                         temp_arr = [existing, new_existing]
@@ -2005,9 +2069,13 @@ def run_postprocessing(
             first = real_val[0][0]
             last = real_val[-1][0]
 
-            # Linear interpolation of "intermediate" points
-            nans, x = nan_helper(AEW_lon_slc)
-            AEW_lon_slc[nans] = np.interp(x(nans), x(~nans), AEW_lon_slc[~nans])
+            # Linear interpolation of "intermediate" points. Longitude is filled on
+            # an unwrapped copy: interpolating raw longitudes across a gap that spans
+            # the dateline would sweep the wave back around the whole globe.
+            lon_unwrapped = geo.unwrap_lon(AEW_lon_slc)
+            nans, x = nan_helper(lon_unwrapped)
+            lon_unwrapped[nans] = np.interp(x(nans), x(~nans), lon_unwrapped[~nans])
+            AEW_lon_slc = geo.wrap180(lon_unwrapped)
 
             nans, x = nan_helper(AEW_lat_slc)
             AEW_lat_slc[nans] = np.interp(x(nans), x(~nans), AEW_lat_slc[~nans])
@@ -2109,7 +2177,7 @@ def run_postprocessing(
             lon_out = AEW_lon[storm, tm_i]
             lat_out = AEW_lat[storm, tm_i]
             if ~np.isnan(lon_out) and ~np.isnan(lat_out):
-                lon_i, n = find_nearest(lon, lon_out)
+                lon_i, n = geo.find_nearest_lon(lon, lon_out)
                 lat_i, n = find_nearest(lat, lat_out)
                 curv_value = curv_vort_slice[lat_i, lon_i]
 
@@ -2125,10 +2193,9 @@ def run_postprocessing(
     for slc_num in range(np.shape(AEW_lon)[0]):
         year_in = int(year_used)
         connected_TC = False  # Hard wired, need to fix
-        if np.nanmax(AEW_lon[slc_num, :]) > -17:
-            over_africa = True
-        else:
-            over_africa = False
+        # Did this wave ever sit in a region flagged as land (classically Africa,
+        # east of 17W)? np.nanmax(lon) > -17 cannot answer that once longitudes wrap.
+        over_africa = over_land_anywhere(AEW_lon[slc_num, :], region_table)
         if pair_with_TC:
             if slc_num in TC_linked_num:  # If the wave number is included in the wave list for linked TCs
                 connected_TC = True
@@ -2145,7 +2212,7 @@ def run_postprocessing(
             TC_genesis_time = "N/A"
         lon_in = AEW_lon[slc_num, :][~np.isnan(AEW_lon[slc_num, :])]
         lat_in = AEW_lat[slc_num, :][~np.isnan(AEW_lon[slc_num, :])]
-        smooth_lon_in = savgol_filter(lon_in, smooth_len, 2, mode="nearest")
+        smooth_lon_in = smooth_lon_tracks(lon_in, smooth_len, 2, mode="nearest")
         smooth_lat_in = savgol_filter(lat_in, smooth_len, 2, mode="nearest")
         time_in = reg_list_edit[:][~np.isnan(AEW_lon[slc_num, :])]
         strength_in = AEW_strength[slc_num, :][~np.isnan(AEW_lon[slc_num, :])]
@@ -2167,17 +2234,16 @@ def run_postprocessing(
         AEW_lat_i = np.argwhere(~np.isnan(AEW_lat[row, :]))
         AEW_lat_st = AEW_lat_i[0][0]
         AEW_lat_end = AEW_lat_i[-1][0] + 1
-        AEW_lon_filter_pull = savgol_filter(AEW_lon[row, AEW_lon_st:AEW_lon_end], smooth_len, 2, mode="nearest")
+        AEW_lon_filter_pull = smooth_lon_tracks(AEW_lon[row, AEW_lon_st:AEW_lon_end], smooth_len, 2, mode="nearest")
         AEW_lat_filter_pull = savgol_filter(AEW_lat[row, AEW_lat_st:AEW_lat_end], smooth_len, 2, mode="nearest")
         AEW_lon_filter[row, AEW_lon_st:AEW_lon_end] = AEW_lon_filter_pull
         AEW_lat_filter[row, AEW_lon_st:AEW_lon_end] = AEW_lat_filter_pull
 
         ### EXTRA ATTRIBUTES TO ADD
         connected_TC = False  # Hard wired, need to fix
-        if np.nanmax(AEW_lon[slc_num, :]) > -17:
-            over_africa = True
-        else:
-            over_africa = False
+        # (this used to read AEW_lon[slc_num] -- a variable left over from the
+        #  previous loop -- rather than the row being processed here)
+        over_africa = over_land_anywhere(AEW_lon[row, :], region_table)
 
         if row in TC_linked_num:  # If the wave number is included in the wave list for linked TCs
             connected_TC = True
@@ -2252,6 +2318,11 @@ def run_postprocessing(
         AEW_longitude.long_name = "Longitude of AEW Tracks"
         AEW_longitude.units = "degrees"
 
+        AEW_longitude_unwrapped = ncout.createVariable("AEW_lon_unwrapped", np.dtype("float64").char, ("system", "time"))
+        AEW_longitude_unwrapped.long_name = "Longitude of AEW Tracks, unwrapped (continuous across the dateline)"
+        AEW_longitude_unwrapped.units = "degrees"
+        AEW_longitude_unwrapped.comment = "AEW_lon with 360 degree jumps removed, so a track crossing 180 plots as a straight line on a Hovmoller. May fall outside -180 to 180."
+
         AEW_latitude = ncout.createVariable("AEW_lat", np.dtype("float64").char, ("system", "time"))
         AEW_latitude.long_name = "Latitude of AEW Tracks"
         AEW_latitude.units = "degrees"
@@ -2283,6 +2354,7 @@ def run_postprocessing(
         longitude[:] = lon[:]
         latitude[:] = lat[:]
         AEW_longitude[:, :] = AEW_lon[:, :]
+        AEW_longitude_unwrapped[:, :] = unwrap_lon_tracks(AEW_lon)[:, :]
         AEW_latitude[:, :] = AEW_lat[:, :]
         AEW_longitude_smooth[:, :] = AEW_lon_filter[:, :]
         AEW_latitude_smooth[:, :] = AEW_lat_filter[:, :]
@@ -2301,7 +2373,7 @@ def run_postprocessing(
 
         for wave_num in range(np.shape(AEW_lon)[0]):
             AEW_lon_plot = np.ma.masked_array(AEW_lon[wave_num, :], AEW_lat[wave_num, :] > hov_AEW_lat_lim)
-            if np.nanmax(AEW_lon[wave_num, :]) < -17 and hov_over_africa_color:
+            if hov_over_africa_color and not over_land_anywhere(AEW_lon[wave_num, :], region_table):
                 ind_col = "dimgrey"
                 z_d = 4
             else:
@@ -2339,7 +2411,9 @@ def run_postprocessing(
         plt.gca().invert_yaxis()
         ax.set_title(hov_name_prefix + " AEW Tracks with Curvature Vorticity", fontsize=20)
         ax.set_xlabel("Longitude", fontsize=20)
-        ax.set_xlim(-100, 40)
+        # Follow the data rather than the old fixed Atlantic window, so a global run
+        # is not cropped to 100W-40E. Pass hov_lon_limits to override.
+        ax.set_xlim(*(hov_lon_limits if hov_lon_limits is not None else (float(np.min(lon)), float(np.max(lon)))))
         cbar = plt.colorbar(bg)
         cbar.set_label("Curv. Vort. (Avg. 5-20N, 1e-6)", fontsize=12)
         plt.savefig(save_hov)
