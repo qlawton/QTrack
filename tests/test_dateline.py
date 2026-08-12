@@ -47,8 +47,8 @@ def crossing(tmp_path_factory):
         save_nc_file=str(post),
         hovmoller_save=False,
     )
-    with xr.open_dataset(post) as ds:
-        return ds.load(), true_lon
+    with xr.open_dataset(post) as ds, xr.open_dataset(tracks) as raw_ds:
+        return ds.load(), raw_ds.load(), true_lon
 
 
 def _only_track(ds):
@@ -60,7 +60,7 @@ def _only_track(ds):
 
 
 def test_single_unbroken_track(crossing):
-    ds, _ = crossing
+    ds, _, _ = crossing
     lon, _, _ = _only_track(ds)
     valid = np.flatnonzero(~np.isnan(lon))
     assert valid.size == N_TIMES, f"track covers {valid.size} of {N_TIMES} timesteps"
@@ -69,7 +69,7 @@ def test_single_unbroken_track(crossing):
 
 def test_no_gap_at_the_seam(crossing):
     """The old failure mode was losing the wave within about 20 degrees of 180."""
-    ds, _ = crossing
+    ds, _, _ = crossing
     lon, _, _ = _only_track(ds)
     near_seam = np.abs(np.abs(lon) - 180.0) <= 20.0
     assert near_seam.sum() >= 4, "the wave never got near the dateline; test is not exercising the seam"
@@ -77,7 +77,7 @@ def test_no_gap_at_the_seam(crossing):
 
 
 def test_unwrapped_longitude_is_monotonically_westward(crossing):
-    ds, _ = crossing
+    ds, _, _ = crossing
     _, _, unwrapped = _only_track(ds)
     finite = unwrapped[~np.isnan(unwrapped)]
     assert np.all(np.diff(finite) < 0), "an easterly wave must move west at every step"
@@ -86,7 +86,7 @@ def test_unwrapped_longitude_is_monotonically_westward(crossing):
 
 
 def test_track_follows_the_true_position(crossing):
-    ds, true_lon = crossing
+    ds, _, true_lon = crossing
     lon, lat, _ = _only_track(ds)
     error = np.abs(qtrack.geo.lon_delta(lon, true_lon))
     assert np.nanmax(error) <= 2.0, f"max longitude error {np.nanmax(error):.2f} deg"
@@ -94,9 +94,24 @@ def test_track_follows_the_true_position(crossing):
 
 
 def test_total_westward_travel_matches_the_prescribed_speed(crossing):
-    ds, true_lon = crossing
+    ds, _, true_lon = crossing
     _, _, unwrapped = _only_track(ds)
     finite = unwrapped[~np.isnan(unwrapped)]
     travelled = finite[0] - finite[-1]
     expected = true_lon[0] - true_lon[-1]
     assert travelled == pytest.approx(expected, abs=2.0)
+
+
+def test_short_tracks_are_still_removed(crossing):
+    """run_tracking must drop tracks shorter than AEW_day_remove.
+
+    The check reads the track length back out of the row after the gap fill has
+    restored the leading and trailing NaNs. An earlier version of the wrap-safe
+    gap fill rebound the working array, so the length was measured on the
+    fully-interpolated series and nothing was ever short enough to drop -- five
+    spurious one-point tracks survived into the output.
+    """
+    _, raw_ds, _ = crossing
+    lengths = (~np.isnan(raw_ds["AEW_lon"].values)).sum(axis=1)
+    cutoff = 2 * 24 // 6  # AEW_day_remove=2 days at 6-hourly resolution
+    assert lengths.min() > cutoff, f"raw output kept tracks of length {sorted(lengths.tolist())}"

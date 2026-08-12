@@ -281,7 +281,10 @@ def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nond
 
     # ### IMPORTANT DIRECTORIES AND CUSTOMIZATIONS
     gif_dir = gif_dir_in
-    data_dir = ""
+    # Per-timestep scratch files. Keyed to the output path rather than dumped in the
+    # current working directory, so two runs cannot clobber each other's temporaries
+    # and a test does not litter the repo root.
+    temp_prefix = os.path.join(os.path.dirname(os.path.abspath(data_out)), "." + os.path.basename(data_out) + ".curv_temp_")
     data_in = data_in
     data_out = data_out
 
@@ -493,7 +496,7 @@ def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nond
     def run_loop(slc_num, radius):
         # file_list = []
         print("Timestep number: " + str(slc_num))
-        out_name = data_dir + "curv_temp_data_" + str(slc_num) + ".npy"
+        out_name = temp_prefix + str(slc_num) + ".npy"
         curv_vort_data = curv_vort(u_work[slc_num, :, :], v_work[slc_num, :, :], dx, dy)
         set_radius = radius
         curv_array = geo.unpad_lon(GetBG(LON, LAT, curv_vort_data, res, set_radius), pad_n, axis=-1)
@@ -534,7 +537,7 @@ def COMPUTE_CURV_VORT_NON_DIV_UPDATE(data_in, data_out, res, radius, njobs, nond
 
     if SAVE_OUTPUT:
         for i in np.arange(len(time)):
-            in_file = data_dir + "curv_temp_data_" + str(i) + ".npy"
+            in_file = temp_prefix + str(i) + ".npy"
             temp_file = np.load(in_file)
             out_array[i, :, :] = temp_file[:, :]
             os.remove(in_file)

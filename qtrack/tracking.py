@@ -821,8 +821,11 @@ def run_tracking(
             AEW_lat_in[row, 0:first] = np.nan
             AEW_lat_in[row, (last + 1) :] = np.nan
 
-            # Remove any track that has less than 48 hours worth of data
-            data_len = len(AEW_lon_slc[~np.isnan(AEW_lon_slc)])
+            # Remove any track that has less than 48 hours worth of data.
+            # Read back from AEW_lon_in, not AEW_lon_slc: the wrap-safe gap fill above
+            # rebinds AEW_lon_slc to a new array, so it no longer aliases the row and
+            # would not see the NaNs just restored outside [first, last].
+            data_len = len(AEW_lon_in[row, :][~np.isnan(AEW_lon_in[row, :])])
             # print(data_len)
             if data_len <= cutoff_len:
                 del_list.append(row)
