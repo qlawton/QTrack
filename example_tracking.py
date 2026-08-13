@@ -40,10 +40,20 @@ data_file_in = prepped_data_save  # "prepped_data_for_tracking.nc"#"analysis_and
 compute_curvvort(data_file_in, curv_file_out, njobs_in=-1)
 
 # ### AEW Tracking step
+# Defaults initiate waves over Africa and the far eastern Atlantic, as always, but
+# now follow them as far west as they survive -- past 180 on a global grid -- rather
+# than stopping at the edge of the old (-180, 40) window.
+#
+# To reproduce results from version 0.0.4 or the published ERA5/MERRA-2 databases
+# exactly, pin the old region table and window:
+#     run_tracking(..., regions="atlantic", left_right_bounds=(-180, 40))
+# For genesis in every basin, see example_tracking_global.py.
 run_tracking(input_file=curv_file_out, save_file=AEW_raw_save_file)
 
 
 # ### AEW Postprocessing step
+# hov_lon_limits=None (the default) makes the hovmoller span the input data; pass
+# (-100, 40) for the classic Atlantic view. Pass the same `regions` value used above.
 run_postprocessing(input_file=AEW_raw_save_file, real_year_used=year_in, curv_data_file=curv_file_out, save_obj_file=AEW_final_obj_file, save_nc_file=AEW_final_nc_file)
 
 # ### OUTPUT TIME

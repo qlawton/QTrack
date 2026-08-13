@@ -33,6 +33,35 @@ run_tracking(input_file="cv.nc", regions=my_regions, initiation_bounds=None)
 
 Note that a *regional* domain straddling 180 cannot be handled: converting it to the -180 to 180 convention and sorting produces a physically discontinuous axis. `prep_data` warns if it sees one. Supply global data instead.
 
+### Upgrading from 0.0.4
+
+The four-step workflow, every threshold, and all existing output variable names are unchanged. **Regional input behaves exactly as before.** On a *global* input grid, three things differ:
+
+1. Tracks are no longer cut off at the edges of the old `left_right_bounds=(-180, 40)` window, so long-lived waves carry on further west and can run past 180. `left_right_bounds` now defaults to `None`, meaning the whole globe.
+2. The curvature vorticity is no longer identically zero in a ~23 degree band straddling 180, so the East and West Pacific carry real values instead of an artificial hole.
+3. The post-processing Hovmoller spans the input data instead of a fixed 100W-40E. Pass `hov_lon_limits=(-100, 40)` for the classic Atlantic view.
+
+Note also that west of 100W the default region table applies general ocean settings rather than the more restrictive "Caribbean" ones (a 700 km rather than 500 km extrapolation leash, and no lock into extrapolation-only mode). That is deliberate for global tracking, where a wave has to be re-acquirable after it weakens and re-intensifies.
+
+**To reproduce 0.0.4, or the published ERA5/MERRA-2 databases, exactly**, pin the old region table and window:
+
+~~~~
+run_tracking(input_file=curv_file_out, save_file=AEW_raw_save_file,
+             regions="atlantic", left_right_bounds=(-180, 40))
+run_postprocessing(input_file=AEW_raw_save_file, ..., regions="atlantic",
+                   hov_lon_limits=(-100, 40))
+~~~~
+
+That combination was checked against 0.0.4 on the `era5_2010_10day` example: all six post-processed tracks identical to 0.000 degrees of longitude.
+
+**To track waves in every basin**, allow genesis outside Africa:
+
+~~~~
+run_tracking(input_file=curv_file_out, save_file=AEW_raw_save_file, initiation_bounds=None)
+~~~~
+
+See [`example_tracking_global.py`](https://github.com/qlawton/QTrack/blob/main/example_tracking_global.py) for a complete global run. Be aware that a global run also picks up westward-propagating tropical disturbances that are not African easterly waves -- monsoon-trough lows over the Bay of Bengal and South China Sea are typically the strongest features in the field, and the extrapolation step can carry a track into the subtropics (up to `extrap_latitude_max`). Narrow `initiation_bounds`, or set `allow_initiation=False` on a region, if you do not want them.
+
 ### Important Note on Non-Divergent Wind Step
 Due to inconsistencies in the windspharm package, which computes the non-divergent wind using spherical harmonics, the non-divergent wind step is currently not included in the package. This step was largely superfluous and thus not including this step is is not anticipated to have any major negative impacts. Nevertheless, it could result in AEW tracks slightly differing from those produced with this step included, including the AEW tracks in the Lawton et al. (2022) AEW databases. We hope to include a non-divergent wind step in a future release.
 
