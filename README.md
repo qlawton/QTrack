@@ -1,7 +1,9 @@
 # QTrack: An African Easterly Wave Tracker
-**Version: 0.0.4**
+**Version: 0.1.0**
 
 The AEW tracker was developed by **Quinton Lawton**, currently affiliated with the NSF National Center for Atmospheric Research (NSF NCAR). This python module was developed with the support of **Zachary Moon** (NOAA ARL/Texas A&M University) and **Kelly Núñez Ocasio** (Texas A&M University).  
+
+The tracking algorithm, its design, and all of the original scripts in this package were written by **Quinton Lawton**. The version 0.1.0 updates that resolved the longitude boundary limitation at the international dateline -- making the tracker periodic in longitude so that waves can be followed globally -- were carried out with the assistance of **Claude** (Anthropic).
 
 This is similar to the AEW Tracker described by Lawton et al. (2022), which can be found here: https://doi.org/10.1175/MWR-D-21-0321.1.
 
@@ -33,7 +35,7 @@ run_tracking(input_file="cv.nc", regions=my_regions, initiation_bounds=None)
 
 Note that a *regional* domain straddling 180 cannot be handled: converting it to the -180 to 180 convention and sorting produces a physically discontinuous axis. `prep_data` warns if it sees one. Supply global data instead.
 
-### Upgrading from 0.0.4
+### Upgrading from 0.0.4 to 0.1.0
 
 The four-step workflow, every threshold, and all existing output variable names are unchanged. **Regional input behaves exactly as before.** On a *global* input grid, three things differ:
 
